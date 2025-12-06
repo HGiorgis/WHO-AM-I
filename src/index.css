@@ -1,0 +1,344 @@
+/* styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+  
+  .animate-spin-slow.reverse {
+    animation: spin 8s linear infinite reverse;
+  }
+  
+  .animate-scan {
+    animation: scan 3s linear infinite;
+  }
+  
+  .animate-burst {
+    animation: burst 1s ease-out forwards;
+  }
+  
+  .animate-loading-bar {
+    animation: loading 2s ease-in-out infinite;
+  }
+  
+  .text-glow {
+    text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+  }
+  
+  .box-glow {
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+  }
+  
+  .box-glow:hover {
+    box-shadow: 0 0 30px rgba(0, 245, 255, 0.5);
+  }
+}
+
+@keyframes scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+@keyframes burst {
+  0% { transform: rotate(var(--rotation)) translateX(0) scale(1); opacity: 1; }
+  100% { transform: rotate(var(--rotation)) translateX(120px) scale(0); opacity: 0; }
+}
+
+@keyframes loading {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(180deg); }
+}
+
+.floating {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #00f5ff, #8b5cf6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #22d3ee, #a855f7);
+}
+
+/* Selection colors */
+::selection {
+  background: rgba(0, 245, 255, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background: rgba(0, 245, 255, 0.3);
+  color: white;
+}
+
+/* Add to your global CSS */
+@layer utilities {
+  .animate-orbital {
+    animation: orbital var(--orbit-duration, 4s) linear infinite var(--orbit-delay, 0s);
+  }
+  
+  @keyframes orbital {
+    0% {
+      transform: 
+        rotate(0deg) 
+        translateX(var(--orbit-radius, 60px)) 
+        rotate(0deg);
+    }
+    100% {
+      transform: 
+        rotate(360deg) 
+        translateX(var(--orbit-radius, 60px)) 
+        rotate(-360deg);
+    }
+  }
+  
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { 
+      transform: translateY(0px) rotate(0deg); 
+    }
+    50% { 
+      transform: translateY(-20px) rotate(180deg); 
+    }
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  @keyframes glow {
+    from { 
+      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    }
+    to { 
+      box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+    }
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom selection */
+::selection {
+  background: rgba(16, 185, 129, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background: rgba(16, 185, 129, 0.3);
+  color: white;
+}
+
+/* Add to your global CSS */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 
+      0 0 10px currentColor,
+      0 0 20px currentColor,
+      0 0 40px currentColor;
+  }
+  
+  .box-glow {
+    box-shadow: 
+      0 0 20px rgba(0, 255, 200, 0.3),
+      0 0 40px rgba(0, 255, 200, 0.1),
+      inset 0 0 20px rgba(0, 255, 200, 0.1);
+  }
+  
+  .animate-cyber-pulse {
+    animation: cyber-pulse 4s ease-in-out infinite;
+  }
+  
+  @keyframes cyber-pulse {
+    0%, 100% { 
+      opacity: 0.3;
+      transform: scale(1);
+    }
+    50% { 
+      opacity: 0.7;
+      transform: scale(1.02);
+    }
+  }
+}
+
+/* Smooth performance optimizations */
+canvas {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Enhanced selection colors for cyber theme */
+::selection {
+  background: rgba(0, 255, 200, 0.3);
+  color: white;
+  text-shadow: 0 0 10px rgba(0, 255, 200, 0.5);
+}
+
+/* Add to your global CSS */
+@layer utilities {
+  .animate-orbital {
+    animation: orbital var(--orbit-duration, 4s) linear infinite var(--orbit-delay, 0s);
+  }
+  
+  @keyframes orbital {
+    0% {
+      transform: 
+        rotate(0deg) 
+        translateX(var(--orbit-radius, 60px)) 
+        rotate(0deg);
+    }
+    100% {
+      transform: 
+        rotate(360deg) 
+        translateX(var(--orbit-radius, 60px)) 
+        rotate(-360deg);
+    }
+  }
+  
+  .animate-neural-pulse {
+    animation: neural-pulse 3s ease-in-out infinite;
+  }
+  
+  @keyframes neural-pulse {
+    0%, 100% { 
+      opacity: 0.3;
+    }
+    50% { 
+      opacity: 0.7;
+    }
+  }
+}
+
+/* Custom scrollbar for terminal */
+.terminal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(6, 182, 212, 0.1);
+  border-radius: 3px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.3);
+  border-radius: 3px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}
+
+/* styles/globals.css */
+@layer utilities {
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+  
+  .animate-scan {
+    animation: scan 3s linear infinite;
+  }
+  
+  .animate-cylinder-spin {
+    animation: cylinder-spin 8s linear infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px) rotate(0deg);
+    opacity: 0.6;
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px) rotate(120deg);
+    opacity: 1;
+  }
+  66% {
+    transform: translateY(10px) translateX(-10px) rotate(240deg);
+    opacity: 0.8;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100vh);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes cylinder-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
+}
+
+/* Custom progress bar animation */
+@keyframes data-stream {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.data-stream {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 245, 255, 0.4),
+    transparent
+  );
+  background-size: 200px 100%;
+  animation: data-stream 2s linear infinite;
+}
+
+
+/* styles/globals.css */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Smooth scale transitions */
+.scale-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
