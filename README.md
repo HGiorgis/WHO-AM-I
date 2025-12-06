@@ -23,7 +23,7 @@ This portfolio showcases **real-world projects** that demonstrate expertise in:
 
 ## 🌐 Explore
 
-Check the live portfolio here: **[hgiorgis.pro.et](https://hgiorgis.pro.et)**
+Check the live portfolio here: **[hgiorgis.github.io](https://hgiorgis.github.io/WHO-AM-I/)**
 
 ---
 

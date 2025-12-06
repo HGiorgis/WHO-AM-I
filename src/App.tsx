@@ -7,7 +7,7 @@ import { DesignVault } from "./components/DesignVault";
 import { GameSanctum } from "./components/GameSanctum";
 import { CyberRealm } from "./components/CyberRealm";
 import { Home } from "./components/Home";
-import  Project  from "./components/Project";
+import Project from "./components/Project";
 import { RealmTransition } from "./components/RealmTransition";
 
 import {
@@ -54,8 +54,7 @@ export default function Portfolio() {
   useEffect(() => {
     const handleOpenTerminal = () => setTerminalOpen(true);
     window.addEventListener("openTerminal", handleOpenTerminal);
-    return () =>
-      window.removeEventListener("openTerminal", handleOpenTerminal);
+    return () => window.removeEventListener("openTerminal", handleOpenTerminal);
   }, []);
 
   const showLockedPopup = (realm: string) => {
@@ -80,9 +79,7 @@ export default function Portfolio() {
     setLockedPopups((prev) => [...prev, popup]);
 
     setTimeout(() => {
-      setLockedPopups((prev) =>
-        prev.filter((p) => p.id !== popup.id)
-      );
+      setLockedPopups((prev) => prev.filter((p) => p.id !== popup.id));
     }, 5000);
   };
 
@@ -94,16 +91,12 @@ export default function Portfolio() {
     if (code === "DESIGN_2024" && realm === "design") {
       setAccessLevel("design");
       triggerRealmTransition("design");
-      setLockedPopups((prev) =>
-        prev.filter((p) => p.realm !== "design")
-      );
+      setLockedPopups((prev) => prev.filter((p) => p.realm !== "design"));
     }
     if (code === "GAME_MASTER" && realm === "game") {
       setAccessLevel("game");
       triggerRealmTransition("game");
-      setLockedPopups((prev) =>
-        prev.filter((p) => p.realm !== "game")
-      );
+      setLockedPopups((prev) => prev.filter((p) => p.realm !== "game"));
     }
   };
 
@@ -152,19 +145,13 @@ export default function Portfolio() {
         return accessLevel === "design" ? (
           <DesignVault onRealmChange={handleRealmChange} />
         ) : (
-          <LockedRealm
-            realm="design"
-            onRealmChange={handleRealmChange}
-          />
+          <LockedRealm realm="design" onRealmChange={handleRealmChange} />
         );
       case "game":
         return accessLevel === "game" ? (
           <GameSanctum onRealmChange={handleRealmChange} />
         ) : (
-          <LockedRealm
-            realm="game"
-            onRealmChange={handleRealmChange}
-          />
+          <LockedRealm realm="game" onRealmChange={handleRealmChange} />
         );
       default:
         return <Home onRealmChange={handleRealmChange} />;
@@ -176,10 +163,12 @@ export default function Portfolio() {
       <div className="relative bg-black min-h-screen overflow-hidden">
         {/* SIDE NAV (NOW SAFE INSIDE ROUTER) */}
         <SideNav />
-        
+
         {/* BACKGROUND */}
         <div className="fixed inset-0">
-          <CyberBackground active={currentRealm === "cyber" || currentRealm === "home"} />
+          <CyberBackground
+            active={currentRealm === "cyber" || currentRealm === "home"}
+          />
           <div
             className={`absolute inset-0 transition-all duration-1000 ${
               currentRealm === "home"
@@ -196,10 +185,7 @@ export default function Portfolio() {
         </div>
 
         {/* TRANSITION */}
-        <RealmTransition
-          isActive={isTransitioning}
-          fromRealm={currentRealm}
-        />
+        <RealmTransition isActive={isTransitioning} fromRealm={currentRealm} />
 
         {/* ROUTES */}
         <div className="relative z-10">
@@ -212,11 +198,9 @@ export default function Portfolio() {
                   {/* TERMINAL */}
                   <Terminal
                     isOpen={terminalOpen}
-                    onToggle={() =>
-                      setTerminalOpen(!terminalOpen)
-                    }
-                    onAccessCode={handleAccessCode}
-                    currentRealm={currentRealm}
+                    onToggle={() => setTerminalOpen(!terminalOpen)}
+                    // onAccessCode={handleAccessCode}
+                    // currentRealm={currentRealm}
                     onRealmChange={handleRealmChange}
                   />
 
@@ -249,9 +233,7 @@ export default function Portfolio() {
                         popup={popup}
                         index={index}
                         onRemove={removePopup}
-                        onTerminalOpen={() =>
-                          setTerminalOpen(true)
-                        }
+                        onTerminalOpen={() => setTerminalOpen(true)}
                       />
                     ))}
                   </div>
@@ -296,10 +278,7 @@ const LockedPopupNotification = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(
-      () => setIsVisible(true),
-      80 * index
-    );
+    const t = setTimeout(() => setIsVisible(true), 80 * index);
     return () => clearTimeout(t);
   }, [index]);
 
@@ -321,14 +300,10 @@ const LockedPopupNotification = ({
         <div className="flex items-center space-x-2 mb-1">
           {popup.icon}
           <span className="text-red-300 font-semibold text-sm">
-            {popup.realm === "design"
-              ? "DESIGN VAULT"
-              : "GAME SANCTUM"}
+            {popup.realm === "design" ? "DESIGN VAULT" : "GAME SANCTUM"}
           </span>
         </div>
-        <p className="text-red-200 text-xs mb-2">
-          {popup.message}
-        </p>
+        <p className="text-red-200 text-xs mb-2">{popup.message}</p>
 
         <div className="flex items-center space-x-2">
           <Sparkles className="w-3 h-3 text-yellow-400 animate-pulse" />
