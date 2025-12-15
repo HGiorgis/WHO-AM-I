@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "homepage": "https://hgiorgis.github.io/whoami"
+    "homepage": "https://hgiorgis.github.io/WHO-AM-I"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
