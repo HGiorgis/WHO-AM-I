@@ -6,7 +6,7 @@ import mimetypes
 from pathlib import Path
 
 from django.conf import settings
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import Http404, HttpResponse
 
 
 def serve_spa_index(request):
@@ -14,7 +14,8 @@ def serve_spa_index(request):
     index_path = settings.FRONTEND_DIST / "index.html"
     if not index_path.exists():
         raise Http404("Frontend not built")
-    return FileResponse(open(index_path, "rb"), content_type="text/html")
+    with open(index_path, "rb") as f:
+        return HttpResponse(f.read(), content_type="text/html")
 
 
 def serve_frontend_asset(request, path):
@@ -24,4 +25,5 @@ def serve_frontend_asset(request, path):
     if not file_path.is_file() or not str(file_path).startswith(str(assets_dir.resolve())):
         raise Http404()
     content_type, _ = mimetypes.guess_type(str(file_path))
-    return FileResponse(open(file_path, "rb"), content_type=content_type or "application/octet-stream")
+    with open(file_path, "rb") as f:
+        return HttpResponse(f.read(), content_type=content_type or "application/octet-stream")

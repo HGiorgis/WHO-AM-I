@@ -1,0 +1,24 @@
+# Render Blueprint — one web service (Docker: frontend + backend).
+# Deploy: connect repo in Render Dashboard; use this blueprint or create a Web Service with Docker.
+# Free tier: 750 hours/month. Set env vars in Dashboard (or below with sync: false for secrets).
+
+services:
+  - type: web
+    runtime: docker
+    name: whoami
+    # Dockerfile at repo root; CMD runs migrations + gunicorn
+    healthCheckPath: /
+    envVars:
+      - key: VITE_OWNER_API_URL
+        value: /api
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OWNER_KEY
+        sync: false
+      # Optional: uncomment and set in Dashboard
+      # - key: TELEGRAM_BOT_TOKEN
+      #   sync: false
+      # - key: TELEGRAM_CHAT_ID
+      #   sync: false
+      # - key: SITE_URL
+      #   sync: false

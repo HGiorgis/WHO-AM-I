@@ -17,7 +17,7 @@ ENV VITE_OWNER_API_URL=${VITE_OWNER_API_URL}
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY index.html vite.config.js tailwind.config.js postcss.config.js jsconfig.json ./
+COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
 COPY public ./public
 COPY src ./src
 
@@ -41,15 +41,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY data-center/config ./config
 COPY data-center/apps ./apps
+COPY data-center/scripts ./scripts
 COPY data-center/manage.py ./
 
 # Copy built frontend into Django's frontend_dist (served at / and /assets/)
 COPY --from=frontend-build /app/frontend/dist ./frontend_dist
 
-# Collect Django static (admin, etc.) and ensure frontend_dist is used as-is
-RUN python manage.py collectstatic --noinput --clear 2>/dev/null || true
+# Collect Django static (admin, etc.)
+RUN python manage.py collectstatic --noinput 2>/dev/null || true
+
+# Startup: run migrations then gunicorn
+RUN chmod +x /app/scripts/run.sh
 
 EXPOSE 8000
 
-# Gunicorn: bind to 0.0.0.0 so Render can reach it; use PORT from env
-CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 2 --timeout 60 --access-logfile - --capture-output"]
+CMD ["/app/run.sh"]

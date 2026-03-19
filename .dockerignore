@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+data-center/venv
+data-center/.venv
+venv
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
+
+# Build / env
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Optional: keep image smaller (uncomment if you don't need these in build)
+# data-center/db.sqlite3
+# *.md
