@@ -1,0 +1,120 @@
+"""
+Send notifications to Telegram. Set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in env.
+Uses HTML formatting for a clean, professional look.
+When a new visitor is notified, their session_id is cached so /more in the group returns details.
+"""
+import json
+import urllib.request
+from django.conf import settings
+from django.core.cache import cache
+
+# Cache key and TTL for "last notified visitor" (so bot can answer /more)
+TELEGRAM_LAST_VISITOR_CACHE_KEY = "telegram_last_visitor_session_id"
+TELEGRAM_LAST_VISITOR_CACHE_TTL = 86400  # 24 hours
+
+
+def _escape_html(s):
+    if not s:
+        return ""
+    return (
+        str(s)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def send_telegram_message(text, parse_mode="HTML", disable_preview=True, chat_id=None):
+    """Fire-and-forget: send text to Telegram. chat_id overrides TELEGRAM_CHAT_ID when replying in a group."""
+    token = getattr(settings, "TELEGRAM_BOT_TOKEN", "") or ""
+    cid = chat_id if chat_id is not None else (getattr(settings, "TELEGRAM_CHAT_ID", "") or "")
+    if not token or not cid:
+        return
+    try:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = json.dumps({
+            "chat_id": cid,
+            "text": text,
+            "parse_mode": parse_mode,
+            "disable_web_page_preview": disable_preview,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=8)
+    except Exception:
+        pass  # do not fail the main request
+
+
+def notify_contact_message(name, email, message):
+    """Send a clean contact form notification using Telegram HTML (bold + link only)."""
+    name = _escape_html(name).strip() or "—"
+    email = _escape_html(email).strip() or "—"
+    msg_body = _escape_html(message).strip() or "—"
+
+    site_url = getattr(settings, "SITE_URL", "") or ""
+    site_label = "Open dashboard"
+    if site_url:
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(site_url)
+            netloc = parsed.netloc or parsed.path
+            if netloc.startswith("www."):
+                netloc = netloc[4:]
+            site_label = netloc or "Dashboard"
+        except Exception:
+            pass
+
+    parts = [
+        "<b>New contact message</b>",
+        "",
+        f" <b>— Name:</b> {name}",
+        f" <b>— Email:</b> {email}",
+        "",
+        f"<b>Message:</b>\n{msg_body}",
+    ]
+    if site_url:
+        parts.append("")
+        parts.append(f'—  <a href="{site_url}/owner">{site_label}</a>')
+
+    text = "\n".join(parts)
+    send_telegram_message(text)
+
+
+def _country_flag_emoji(code):
+    if not code or len(code) != 2:
+        return ""
+    code = code.upper()
+    try:
+        return chr(0x1F1E6 - 65 + ord(code[0])) + chr(0x1F1E6 - 65 + ord(code[1]))
+    except Exception:
+        return ""
+
+
+def notify_new_visitor(session_id, ip_address, country_code):
+    """Send a clean new visitor notification and cache session_id so /more returns details."""
+    ip = _escape_html(ip_address or "—")
+    country = _escape_html(country_code or "—")
+    flag = _country_flag_emoji(country_code) if country_code else "🌍"
+
+    site_url = getattr(settings, "SITE_URL", "") or ""
+    parts = [
+        " <b>New unique visitor</b>",
+        "",
+        f" <b>— IP:</b> {ip}",
+        f" <b>— Location:</b> {flag} {country}",
+        "",
+        "💬 Reply <b>/more</b> for full details.",
+    ]
+    if site_url:
+        parts.append("")
+        parts.append(f'—  <a href="{site_url}/owner">View analytics</a>')
+
+    text = "\n".join(parts)
+    send_telegram_message(text)
+
+    if session_id:
+        cache.set(TELEGRAM_LAST_VISITOR_CACHE_KEY, session_id, TELEGRAM_LAST_VISITOR_CACHE_TTL)

@@ -1,0 +1,17 @@
+{
+  "name": "Whoami — Portfolio",
+  "short_name": "Whoami",
+  "description": "Backend architect & DevOps portfolio",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f4f0",
+  "theme_color": "#0f0f0f",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

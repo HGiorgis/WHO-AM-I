@@ -1,0 +1,90 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-syne: "Syne", sans-serif;
+    --font-grotesk: "Space Grotesk", sans-serif;
+    --font-mono: "Space Mono", monospace;
+
+    --background: 14 14% 96%;
+    --foreground: 0 0% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 6%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 6%;
+    --primary: 14 14% 96%;
+    --primary-foreground: 0 0% 6%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 6%;
+    --muted: 0 0% 88%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 6%;
+    --accent-foreground: 14 14% 96%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 82%;
+    --input: 0 0% 82%;
+    --ring: 0 0% 6%;
+    --radius: 0rem;
+
+    /* Brand colors */
+    --clr-ink: #0f0f0f;
+    --clr-paper: #f5f4f0;
+    --clr-red: #e84040;
+    --clr-yellow: #f5c842;
+    --clr-blue: #4fa3e0;
+    --clr-green: #2ecc71;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background: var(--clr-paper);
+    color: var(--clr-ink);
+    font-family: var(--font-grotesk);
+    overflow-x: hidden;
+  }
+}
+
+/* Custom cursor */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--clr-paper);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--clr-ink);
+}
+
+/* Text selection */
+::selection {
+  background: var(--clr-ink);
+  color: var(--clr-paper);
+}
+
+/* Noise texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 200px;
+}
