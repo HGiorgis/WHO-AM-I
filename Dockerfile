@@ -55,4 +55,5 @@ RUN chmod +x /app/scripts/run.sh
 
 EXPOSE 8000
 
-CMD ["/app/run.sh"]
+# Correct path is scripts/run.sh (not /app/run.sh). Use sh to avoid CRLF/shebang issues on Windows.
+CMD ["/bin/sh", "/app/scripts/run.sh"]

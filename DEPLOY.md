@@ -2,6 +2,11 @@
 
 One repo, one Docker image: Vite/React frontend + Django API. Same env for both.
 
+## Troubleshooting Render
+
+- **Exited with status 128** — often the container had no valid start command. This repo uses `CMD ["/bin/sh", "/app/scripts/run.sh"]`; ensure your `Dockerfile` matches if you customized it.
+- If deploy still fails, check logs for `migrate` or `gunicorn` errors (e.g. missing env `SECRET_KEY`).
+
 ## Quick start (local Docker)
 
 ```bash

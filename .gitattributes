@@ -1,0 +1,2 @@
+# Start scripts must use LF so Linux containers don't fail on CR or bad shebang
+*.sh text eol=lf

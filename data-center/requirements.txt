@@ -1,4 +1,5 @@
-Django
+# Pin 4.2 LTS so pip doesn't pull Django 6 (avoid surprise breakage)
+Django>=4.2,<5
 djangorestframework
 python-dotenv
 pillow
