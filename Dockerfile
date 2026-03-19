@@ -15,7 +15,7 @@ ARG VITE_OWNER_API_URL=/api
 ENV VITE_OWNER_API_URL=${VITE_OWNER_API_URL}
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
 COPY public ./public
