@@ -11,6 +11,8 @@ try:
 except ImportError:
     pass
 
+from django.core.exceptions import ImproperlyConfigured
+
 from corsheaders.defaults import default_headers
 
 # Add apps folder to Python path
@@ -35,8 +37,14 @@ _IS_PROD = os.environ.get("RENDER") == "true" or os.environ.get("DJANGO_ENV") ==
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-+6l*a^_k9j2q)20)i+9lrq7w1ynbzh!(g)k2=&h=vjnj@(o5sc")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = not _IS_PROD
+# DEBUG: explicit env wins; else production hosts (Render, etc.) imply DEBUG=False.
+_DEBUG_RAW = os.environ.get("DEBUG", "").strip().lower()
+if _DEBUG_RAW in ("false", "0", "no", "off"):
+    DEBUG = False
+elif _DEBUG_RAW in ("true", "1", "yes", "on"):
+    DEBUG = True
+else:
+    DEBUG = not _IS_PROD
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".onrender.com", ".render.com"]
 if os.environ.get("ALLOWED_HOSTS"):
@@ -95,13 +103,31 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
+# When DEBUG is False, PostgreSQL is used via DATABASE_URL (e.g. Neon). Driver: psycopg2 (in requirements).
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if not DEBUG:
+    if not DATABASE_URL:
+        raise ImproperlyConfigured(
+            "DATABASE_URL is required when DEBUG=False. "
+            "Set it to your Neon (or other Postgres) connection string, e.g. postgresql://user:pass@host/db?sslmode=require"
+        )
+    import dj_database_url
+
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True,
+        ),
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 
 # Password validation
