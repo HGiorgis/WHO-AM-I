@@ -30,13 +30,17 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
+_IS_PROD = os.environ.get("RENDER") == "true" or os.environ.get("DJANGO_ENV") == "production"
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+6l*a^_k9j2q)20)i+9lrq7w1ynbzh!(g)k2=&h=vjnj@(o5sc'
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-+6l*a^_k9j2q)20)i+9lrq7w1ynbzh!(g)k2=&h=vjnj@(o5sc")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = not _IS_PROD
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".onrender.com", ".render.com"]
+if os.environ.get("ALLOWED_HOSTS"):
+    ALLOWED_HOSTS.extend(h.strip() for h in os.environ["ALLOWED_HOSTS"].split(",") if h.strip())
 
 
 # Application definition
@@ -58,6 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -133,7 +138,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Frontend SPA build (filled by Docker; used to serve index.html and /assets/)
+FRONTEND_DIST = BASE_DIR / 'frontend_dist'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -155,6 +164,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "use-ur-key-dont-ask-m
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 # Optional: public site URL for "Open dashboard" link in Telegram (e.g. https://yoursite.com)
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
+CSRF_TRUSTED_ORIGINS = [SITE_URL] if SITE_URL else []
 
 # In-memory cache (used e.g. for Telegram "last visitor" so /more works)
 CACHES = {
