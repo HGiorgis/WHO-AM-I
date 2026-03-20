@@ -14,6 +14,7 @@ import {
   Github,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Mail,
   Crosshair,
   Zap,
@@ -306,7 +307,8 @@ function eventPageTargetCell(ev) {
 }
 
 const VISITORS_PAGE_SIZE = 10;
-const EVENTS_PAGE_SIZE = 20;
+/** Paginate visitor “folders” in Clicks & events (each folder lists that visitor’s events). */
+const EVENT_GROUPS_PAGE_SIZE = 8;
 
 function Pagination({ page, totalItems, pageSize, onPageChange }) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -351,6 +353,7 @@ export default function OwnerDashboard() {
     visitors: [],
     summary: { totalVisits: 0, totalTime: 0, byPage: [] },
     events: [],
+    eventGroups: [],
     insights: {},
   });
   const [projects, setProjects] = useState([]);
@@ -368,7 +371,7 @@ export default function OwnerDashboard() {
     getVisitorStats(period)
       .then((data) => {
         if (!cancelled) {
-          setVisitorData(data || { visitors: [], summary: {}, events: [], insights: {} });
+          setVisitorData(data || { visitors: [], summary: {}, events: [], eventGroups: [], insights: {} });
           setVisitorError(null);
         }
       })
@@ -378,6 +381,7 @@ export default function OwnerDashboard() {
             visitors: [],
             summary: { totalVisits: 0, totalTime: 0, byPage: [] },
             events: [],
+            eventGroups: [],
             insights: {},
           });
           setVisitorError(err?.message || "Could not load visitor data. Check VITE_OWNER_API_URL and owner key.");
@@ -476,7 +480,11 @@ export default function OwnerDashboard() {
           />
         )}
         {tab === "messages" && (
-          <MessagesSection messages={messages} loading={loadingMessages} />
+          <MessagesSection
+            messages={messages}
+            loading={loadingMessages}
+            setMessages={setMessages}
+          />
         )}
       </main>
     </>
@@ -484,7 +492,12 @@ export default function OwnerDashboard() {
 }
 
 function VisitorMonitor({ period, setPeriod, data, loading, error }) {
-  const { visitors = [], summary = {}, events = [], insights = {} } = data;
+  const { visitors = [], summary = {}, events = [], eventGroups: eventGroupsRaw = [], insights = {} } = data;
+  const eventGroups = Array.isArray(eventGroupsRaw) ? eventGroupsRaw : [];
+  const totalTrackedEvents = eventGroups.reduce(
+    (n, g) => n + (Array.isArray(g?.events) ? g.events.length : 0),
+    0
+  );
   const { totalVisits = 0, totalTime = 0, byPage = [] } = summary;
   const {
     liveNow = 0,
@@ -507,9 +520,9 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
     (visitorPage - 1) * VISITORS_PAGE_SIZE,
     visitorPage * VISITORS_PAGE_SIZE
   );
-  const eventsPaginated = events.slice(
-    (eventPage - 1) * EVENTS_PAGE_SIZE,
-    eventPage * EVENTS_PAGE_SIZE
+  const eventGroupsPaginated = eventGroups.slice(
+    (eventPage - 1) * EVENT_GROUPS_PAGE_SIZE,
+    eventPage * EVENT_GROUPS_PAGE_SIZE
   );
 
   return (
@@ -561,7 +574,7 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
         {[
           { label: "Total visits", value: totalVisits, icon: Users },
           { label: "Total time (min)", value: Math.round(totalTime || 0), icon: Clock },
-          { label: "Events (clicks)", value: events.length, icon: MousePointer },
+          { label: "Events (clicks)", value: totalTrackedEvents || events.length, icon: MousePointer },
           { label: "Live now (~5m)", value: liveNow, icon: Activity },
           { label: "Avg scroll %", value: avgScrollPct, icon: BarChart2 },
         ].map(({ label, value, icon: Icon }) => (
@@ -808,77 +821,105 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
         </div>
       </section>
 
-      {/* ——— Section: Clicks & events ——— */}
+      {/* ——— Section: Clicks & events (grouped by visitor / IP) ——— */}
       <section className="space-y-4">
         <h3 className="font-mono text-[11px] uppercase tracking-widest text-ink/50 flex items-center gap-2">
           <MousePointer className="w-3.5 h-3.5" />
           Clicks & events
         </h3>
-        <div className="border border-ink/10">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-ink/10">
-                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
-                    When
-                  </th>
-                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
-                    Page / Target
-                  </th>
-                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50 whitespace-nowrap">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50 min-w-[14rem]">
-                    Summary
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12">
-                      <div className="flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
-                        <SquareFlowLoader size="sm" />
-                        <span>Loading…</span>
+        <p className="text-sm text-ink/55 max-w-2xl">
+          Events are grouped by session (same visitor / IP). Open a row to see how that visitor engaged — clicks,
+          heatmaps, and vitals in order.
+        </p>
+        <div className="border border-ink/10 divide-y divide-ink/10 overflow-hidden">
+          {loading ? (
+            <div className="px-6 py-12 flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
+              <SquareFlowLoader size="sm" />
+              <span>Loading…</span>
+            </div>
+          ) : eventGroups.length > 0 ? (
+            eventGroupsPaginated.map((grp, gi) => {
+              const ip = grp.ip_address || grp.ip || "—";
+              const code = grp.country_code || "";
+              const sid = grp.session_id || "";
+              const sidShort = sid.length > 18 ? `${sid.slice(0, 18)}…` : sid;
+              const dev = [grp.device_type, grp.browser].filter(Boolean).join(" · ") || "—";
+              const list = Array.isArray(grp.events) ? grp.events : [];
+              const gidx = (eventPage - 1) * EVENT_GROUPS_PAGE_SIZE + gi;
+              return (
+                <details
+                  key={grp.session_id || `grp-${gidx}`}
+                  className="group bg-paper [&_summary::-webkit-details-marker]:hidden"
+                >
+                  <summary className="flex cursor-pointer list-none items-start gap-3 px-4 py-4 md:px-6 hover:bg-ink/[0.03]">
+                    <ChevronDown className="w-4 h-4 shrink-0 mt-0.5 text-ink/40 transition-transform group-open:rotate-180" />
+                    <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                        <span className="text-lg leading-none shrink-0">{code ? countryFlag(code) : "—"}</span>
+                        <span className="font-mono text-sm text-ink font-medium">{ip}</span>
+                        <span className="font-mono text-[10px] text-ink/45 truncate max-w-[14rem]" title={sid}>
+                          {sidShort || "no session id"}
+                        </span>
                       </div>
-                    </td>
-                  </tr>
-                ) : eventsPaginated.length > 0 ? (
-                  eventsPaginated.map((ev, i) => {
-                    const rowIndex = (eventPage - 1) * EVENTS_PAGE_SIZE + i;
-                    return (
-                      <tr key={ev.id ?? rowIndex} className="border-b border-ink/5 align-top">
-                        <td className="px-6 py-3 font-mono text-xs text-ink/70 whitespace-nowrap">
-                          {formatDateTime(ev.timestamp || ev.created_at)}
-                        </td>
-                        <td className="px-6 py-3">
-                          {eventPageTargetCell(ev)}
-                        </td>
-                        <td className="px-6 py-3">
-                          {eventTypeBadge(ev)}
-                        </td>
-                        <td className="px-6 py-3 min-w-[12rem] max-w-[26rem]">
-                          <EventMetaSummary ev={ev} />
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-                      No events yet. Connect backend and add tracking to your site.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          <Pagination
-            page={eventPage}
-            totalItems={events.length}
-            pageSize={EVENTS_PAGE_SIZE}
-            onPageChange={setEventPage}
-          />
+                      <div className="flex flex-wrap items-center gap-3 shrink-0 font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+                        <span>
+                          {list.length} event{list.length !== 1 ? "s" : ""}
+                        </span>
+                        <span className="normal-case tracking-normal text-ink/55">{dev}</span>
+                        <span className="text-ink/40">{formatDateTime(grp.last_seen_at)}</span>
+                      </div>
+                    </div>
+                  </summary>
+                  <div className="border-t border-ink/10 overflow-x-auto bg-ink/[0.02]">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-ink/10">
+                          <th className="px-4 md:px-6 py-2 font-mono text-[10px] uppercase tracking-widest text-ink/50">
+                            When
+                          </th>
+                          <th className="px-4 md:px-6 py-2 font-mono text-[10px] uppercase tracking-widest text-ink/50">
+                            Page / Target
+                          </th>
+                          <th className="px-4 md:px-6 py-2 font-mono text-[10px] uppercase tracking-widest text-ink/50 whitespace-nowrap">
+                            Type
+                          </th>
+                          <th className="px-4 md:px-6 py-2 font-mono text-[10px] uppercase tracking-widest text-ink/50 min-w-[12rem]">
+                            Summary
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {list.map((ev, ei) => (
+                          <tr key={ev.id ?? `${gidx}-${ei}`} className="border-b border-ink/5 align-top">
+                            <td className="px-4 md:px-6 py-2.5 font-mono text-xs text-ink/70 whitespace-nowrap">
+                              {formatDateTime(ev.timestamp || ev.created_at)}
+                            </td>
+                            <td className="px-4 md:px-6 py-2.5">{eventPageTargetCell(ev)}</td>
+                            <td className="px-4 md:px-6 py-2.5">{eventTypeBadge(ev)}</td>
+                            <td className="px-4 md:px-6 py-2.5 min-w-[12rem] max-w-[26rem]">
+                              <EventMetaSummary ev={ev} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              );
+            })
+          ) : (
+            <div className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
+              No events yet. Connect backend and add tracking to your site.
+            </div>
+          )}
+          {eventGroups.length > 0 ? (
+            <Pagination
+              page={eventPage}
+              totalItems={eventGroups.length}
+              pageSize={EVENT_GROUPS_PAGE_SIZE}
+              onPageChange={setEventPage}
+            />
+          ) : null}
         </div>
       </section>
     </motion.div>
