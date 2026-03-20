@@ -46,10 +46,22 @@ const skillsFallback = [
 ];
 
 const stackFallback = [
-  { cat: "Backend", items: ["Laravel", "Django", "Node.js", "Python", "PHP", "Go"] },
-  { cat: "Frontend", items: ["React", "JavaScript", "TypeScript", "Tailwind CSS"] },
-  { cat: "DevOps", items: ["Docker", "Nginx", "CI/CD", "GitHub Actions", "Linux"] },
-  { cat: "Data & Cloud", items: ["MySQL", "PostgreSQL", "Redis", "AWS S3", "Cloud VPS"] },
+  {
+    cat: "Backend",
+    items: ["Laravel", "Django", "Node.js", "Python", "PHP", "Go"],
+  },
+  {
+    cat: "Frontend",
+    items: ["React", "JavaScript", "TypeScript", "Tailwind CSS"],
+  },
+  {
+    cat: "DevOps",
+    items: ["Docker", "Nginx", "CI/CD", "GitHub Actions", "Linux"],
+  },
+  {
+    cat: "Data & Cloud",
+    items: ["MySQL", "PostgreSQL", "Redis", "AWS S3", "Cloud VPS"],
+  },
 ];
 
 const expFallback = [
@@ -141,8 +153,8 @@ export default function About() {
               Profile
             </p>
             <p className="text-lg leading-relaxed text-ink/80 mb-6">
-              <span className="font-bold text-ink">HGIORGIS</span> — Haile Giorgis
-              Wagaye: engineer focused on{" "}
+              <span className="font-bold text-ink">HGIORGIS</span> —
+              Hailegiorgis Wagaye: engineer focused on{" "}
               <span className="font-bold text-ink">
                 secure, scalable systems
               </span>{" "}
@@ -150,15 +162,17 @@ export default function About() {
             </p>
             <p className="text-sm leading-relaxed text-ink/55 mb-6">
               Production-ready backends and full-stack product work with{" "}
-              <strong className="text-ink">Laravel, Django, Node.js, and React</strong>
+              <strong className="text-ink">
+                Laravel, Django, Node.js, and React
+              </strong>
               , plus Docker, CI/CD, and pragmatic cloud deployment.
             </p>
             <p className="text-sm leading-relaxed text-ink/55 mb-10">
-              From SaaS-style platforms and APIs to verification flows, analytics,
-              and cryptography-heavy features — collaborating with teams that need
-              reliability and maintainability. Works with startups and growing
-              teams to turn complex requirements into reliable, well-structured
-              systems that are built to scale.
+              From SaaS-style platforms and APIs to verification flows,
+              analytics, and cryptography-heavy features — collaborating with
+              teams that need reliability and maintainability. Works with
+              startups and growing teams to turn complex requirements into
+              reliable, well-structured systems that are built to scale.
             </p>
 
             <div className="grid grid-cols-2 gap-6">

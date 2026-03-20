@@ -25,11 +25,15 @@ export default function NavbarNew() {
           aria-label="HGIORGIS — home"
           className="font-mono text-xs tracking-[0.3em] uppercase text-ink font-bold flex items-center gap-3"
         >
-          <SiteMark className="w-8 h-8 shrink-0 rounded-lg shadow-sm" title="HGIORGIS" aria-hidden />
+          <SiteMark
+            className="w-8 h-8 shrink-0 rounded-lg shadow-sm"
+            title="HGIORGIS"
+            aria-hidden
+          />
           <span className="flex flex-col leading-tight">
             <span>HGIORGIS</span>
             <span className="text-[10px] tracking-[0.25em] text-ink/40 font-normal normal-case">
-              Haile Giorgis Wagaye
+              Whoami
             </span>
           </span>
           <span className="hidden sm:flex items-center gap-1.5 border border-[#2ecc71]/30 px-2 py-0.5 rounded-full">
@@ -83,7 +87,11 @@ export default function NavbarNew() {
                   <Link
                     to={link.path}
                     onClick={() => {
-                      trackEvent("click", `nav:${link.path}`, location.pathname);
+                      trackEvent(
+                        "click",
+                        `nav:${link.path}`,
+                        location.pathname,
+                      );
                       setOpen(false);
                     }}
                     className="group flex items-center gap-4 px-10 py-3"

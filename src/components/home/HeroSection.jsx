@@ -49,7 +49,7 @@ export default function HeroSection() {
           className="mt-8 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
         >
           <span className="font-semibold text-foreground/90">HGIORGIS</span>
-          {" — "}Haile Giorgis Wagaye: full-stack, systems & DevOps — building
+          {" — "}Hailegiorgis Wagaye: full-stack, systems & DevOps — building
           secure, scalable backends and products that ship.
         </motion.p>
 
@@ -95,10 +95,12 @@ export default function HeroSection() {
               </p>
               <p className="mt-1">
                 <span className="text-green-400">$</span>{" "}
-                <span className="text-foreground">echo &quot;HGIORGIS&quot;</span>
+                <span className="text-foreground">
+                  echo &quot;HGIORGIS&quot;
+                </span>
               </p>
               <p className="text-muted-foreground mt-1">
-                Haile Giorgis Wagaye — full-stack · systems · DevOps
+                Hailegiorgis Wagaye — full-stack · systems · DevOps
               </p>
               <p className="mt-2">
                 <span className="text-green-400">$</span>{" "}

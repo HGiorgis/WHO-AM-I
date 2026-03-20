@@ -102,11 +102,16 @@ export default function FooterNew() {
             aria-label="HGIORGIS — home"
             className="flex items-center gap-3 font-syne font-bold text-2xl tracking-tight text-paper hover:text-[#f5c842] transition-colors"
           >
-            <SiteMark className="w-10 h-10 rounded-lg shrink-0" title="HGIORGIS" aria-hidden />
+            <SiteMark
+              className="w-10 h-10 rounded-lg shrink-0"
+              title="HGIORGIS"
+              aria-hidden
+            />
             <span>HGIORGIS</span>
           </Link>
           <p className="font-mono text-xs text-paper/30 text-center md:text-right">
-            © {new Date().getFullYear()} Haile Giorgis Wagaye — All rights reserved
+            © {new Date().getFullYear()} Hailegiorgis Wagaye — All rights
+            reserved
           </p>
         </div>
       </div>
