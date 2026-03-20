@@ -511,11 +511,16 @@ def contact_info(request):
         return JsonResponse(block.body)
     except ContentBlock.DoesNotExist:
         return JsonResponse({
-            "email": "hello@yourname.dev",
-            "location": "San Francisco, CA",
+            "email": "hailegiorgiswagaye@gmail.com",
+            "location": "Addis Ababa, Ethiopia",
             "status": "Available for new projects",
-            "responseTime": "Within 24 hours",
-            "socials": [{"label": "GitHub", "href": "#"}, {"label": "LinkedIn", "href": "#"}],
+            "responseTime": "Within 24–48 hours",
+            "resumeUrl": "/HailegiorgisWagayeResume.pdf",
+            "socials": [
+                {"label": "GitHub", "href": "https://github.com/hgiorgis"},
+                {"label": "LinkedIn", "href": "https://linkedin.com/in/hgiorgis23"},
+                {"label": "Twitter", "href": "https://twitter.com/hgiorgis"},
+            ],
         })
 
 

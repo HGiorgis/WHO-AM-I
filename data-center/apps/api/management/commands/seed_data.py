@@ -265,9 +265,8 @@ ABOUT_BODY = {
         {"cat": "Data & Cloud", "items": ["MySQL", "PostgreSQL", "Redis", "AWS S3", "Cloud VPS"]},
     ],
     "experience": [
-        {"role": "Backend & SaaS Architect", "co": "Independent / Freelance", "period": "2022 – Now", "color": "#e84040", "desc": "Designing and building production-ready platforms for startups — SaaS, verification systems, analytics tools."},
-        {"role": "Full-Stack Developer", "co": "TechForge Labs", "period": "2020 – 2022", "color": "#f5c842", "desc": "Delivered complex web applications with Laravel, Django, and React across diverse industry verticals."},
-        {"role": "System Engineer", "co": "DataStream Corp", "period": "2018 – 2020", "color": "#4fa3e0", "desc": "Managed server infrastructure, optimized backend performance, and ensured 99.9% uptime."},
+        {"role": "Full-Stack & Backend Engineer", "co": "Independent / Freelance", "period": "Present", "color": "#e84040", "desc": "End-to-end delivery: APIs, SaaS-style products, security-conscious design, and DevOps — Laravel, Django, React, Docker & cloud."},
+        {"role": "Systems & integration focus", "co": "Client projects", "period": "—", "color": "#f5c842", "desc": "Backend architecture, third-party integrations, performance, and maintainable deployments."},
     ],
 }
 
@@ -275,7 +274,7 @@ CONTACT_INFO_BODY = {
     "email": "hailegiorgiswagaye@gmail.com",
     "location": "Addis Ababa, Ethiopia",
     "status": "Available for new projects",
-    "responseTime": "Within 24 hours",
+    "responseTime": "Within 24–48 hours",
     "resumeUrl": "/HailegiorgisWagayeResume.pdf",
     "socials": [
         {"label": "GitHub", "href": "https://github.com/hgiorgis"},
