@@ -11,6 +11,8 @@ from django.core.cache import cache
 # Cache key and TTL for "last notified visitor" (so bot can answer /more)
 TELEGRAM_LAST_VISITOR_CACHE_KEY = "telegram_last_visitor_session_id"
 TELEGRAM_LAST_VISITOR_CACHE_TTL = 86400  # 24 hours
+TELEGRAM_LAST_CONTACT_ID_KEY = "telegram_last_contact_message_id"
+TELEGRAM_LAST_CONTACT_ID_TTL = 86400
 
 
 def _escape_html(s):
@@ -24,20 +26,25 @@ def _escape_html(s):
     )
 
 
-def send_telegram_message(text, parse_mode="HTML", disable_preview=True, chat_id=None):
-    """Fire-and-forget: send text to Telegram. chat_id overrides TELEGRAM_CHAT_ID when replying in a group."""
+def send_telegram_message(text, parse_mode="HTML", disable_preview=True, chat_id=None, reply_markup=None):
+    """Fire-and-forget: send text to Telegram. chat_id overrides TELEGRAM_CHAT_ID when replying in a group.
+    parse_mode=None → plain text (no HTML). reply_markup = Telegram inline_keyboard dict."""
     token = getattr(settings, "TELEGRAM_BOT_TOKEN", "") or ""
     cid = chat_id if chat_id is not None else (getattr(settings, "TELEGRAM_CHAT_ID", "") or "")
     if not token or not cid:
         return
     try:
         url = f"https://api.telegram.org/bot{token}/sendMessage"
-        payload = json.dumps({
+        body = {
             "chat_id": cid,
             "text": text,
-            "parse_mode": parse_mode,
             "disable_web_page_preview": disable_preview,
-        }).encode("utf-8")
+        }
+        if parse_mode is not None:
+            body["parse_mode"] = parse_mode
+        if reply_markup:
+            body["reply_markup"] = reply_markup
+        payload = json.dumps(body).encode("utf-8")
         req = urllib.request.Request(
             url,
             data=payload,
@@ -49,8 +56,32 @@ def send_telegram_message(text, parse_mode="HTML", disable_preview=True, chat_id
         pass  # do not fail the main request
 
 
-def notify_contact_message(name, email, message):
-    """Send a clean contact form notification using Telegram HTML (bold + link only)."""
+def answer_telegram_callback_query(callback_query_id, text=None, show_alert=False):
+    """Required after inline button taps so Telegram stops the loading spinner."""
+    token = getattr(settings, "TELEGRAM_BOT_TOKEN", "") or ""
+    if not token or not callback_query_id:
+        return
+    try:
+        url = f"https://api.telegram.org/bot{token}/answerCallbackQuery"
+        body = {"callback_query_id": callback_query_id}
+        if text is not None:
+            body["text"] = text[:200]
+            body["show_alert"] = bool(show_alert)
+        payload = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        urllib.request.urlopen(req, timeout=8)
+    except Exception:
+        pass
+
+
+def notify_contact_message(name, email, message, contact_message_id=None):
+    """Send a clean contact form notification using Telegram HTML (bold + link only).
+    contact_message_id: DB pk so /more or inline buttons can mark it read."""
     name = _escape_html(name).strip() or "—"
     email = _escape_html(email).strip() or "—"
     msg_body = _escape_html(message).strip() or "—"
@@ -82,6 +113,11 @@ def notify_contact_message(name, email, message):
 
     text = "\n".join(parts)
     send_telegram_message(text)
+    if contact_message_id is not None:
+        try:
+            cache.set(TELEGRAM_LAST_CONTACT_ID_KEY, int(contact_message_id), TELEGRAM_LAST_CONTACT_ID_TTL)
+        except (TypeError, ValueError):
+            pass
 
 
 def _country_flag_emoji(code):

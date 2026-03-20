@@ -172,6 +172,8 @@ def owner_validate(request):
 
 
 # ---------- Owner: projects CRUD ----------
+# API key in header — browser SPA does not send Django CSRF cookie; exempt like other owner JSON APIs.
+@csrf_exempt
 @owner_key_required
 def owner_projects_list_or_create(request):
     """GET /api/owner/projects  or  POST /api/owner/projects"""
@@ -198,6 +200,7 @@ def owner_projects_list_or_create(request):
     return JsonResponse({"detail": "Method not allowed"}, status=405)
 
 
+@csrf_exempt
 @owner_key_required
 def owner_project_detail(request, pk):
     """PATCH /api/owner/projects/:id  and  DELETE"""
@@ -227,6 +230,7 @@ def owner_project_detail(request, pk):
 
 
 # ---------- Owner: visitors stats ----------
+@csrf_exempt
 @owner_key_required
 def owner_visitors(request):
     """GET /api/owner/visitors?period=day|week|month|year"""
@@ -397,6 +401,7 @@ def owner_visitors(request):
     })
 
 
+@csrf_exempt
 @owner_key_required
 def owner_visitors_events(request):
     """GET /api/owner/visitors/events?period=..."""
@@ -500,19 +505,20 @@ def contact_submit(request):
     message = (data.get("message") or "").strip()
     if not name or not email or not message:
         return JsonResponse({"ok": False, "detail": "name, email, and message required"}, status=400)
-    ContactMessage.objects.create(name=name, email=email, message=message)
+    msg = ContactMessage.objects.create(name=name, email=email, message=message)
     try:
         from .telegram_notify import notify_contact_message
-        notify_contact_message(name, email, message)
+        notify_contact_message(name, email, message, contact_message_id=msg.pk)
     except Exception:
         pass
     return JsonResponse({"ok": True})
 
 
 # ---------- Owner: contact messages ----------
+@csrf_exempt
 @owner_key_required
 def owner_messages(request):
-    """GET /api/owner/messages"""
+    """GET /api/owner/messages — list. PATCH not allowed here."""
     if request.method != "GET":
         return JsonResponse({"detail": "Method not allowed"}, status=405)
     messages = ContactMessage.objects.all()[:100]
@@ -522,6 +528,28 @@ def owner_messages(request):
             for m in messages
         ]
     })
+
+
+@csrf_exempt
+@owner_key_required
+def owner_message_detail(request, pk):
+    """PATCH /api/owner/messages/<id>  Body: { "read": true }"""
+    if request.method != "PATCH":
+        return JsonResponse({"detail": "Method not allowed"}, status=405)
+    try:
+        import json
+        body = json.loads(request.body or "{}")
+    except Exception:
+        return JsonResponse({"detail": "Invalid JSON"}, status=400)
+    if "read" not in body:
+        return JsonResponse({"detail": "read field required"}, status=400)
+    try:
+        m = ContactMessage.objects.get(pk=pk)
+    except ContactMessage.DoesNotExist:
+        return JsonResponse({"detail": "Not found"}, status=404)
+    m.read = bool(body.get("read"))
+    m.save(update_fields=["read"])
+    return JsonResponse({"message": {"id": m.id, "read": m.read}})
 
 
 # ---------- Owner: site profile (ContentBlock: home_panels, about, contact_info) ----------
@@ -771,19 +799,102 @@ def _format_visitor_detail(session):
     return "\n".join(lines)
 
 
+def _format_visitor_detail_plain(session):
+    """Plain-text snapshot for Telegram (no HTML) — readable in any client."""
+    from .telegram_notify import _country_flag_emoji
+
+    cc = session.country_code or ""
+    flag = f"{_country_flag_emoji(cc)} " if cc else ""
+
+    started = timezone.localtime(session.started_at).strftime("%Y-%m-%d %H:%M")
+    last_seen = timezone.localtime(session.last_seen_at).strftime("%Y-%m-%d %H:%M")
+    dev = " / ".join(
+        x for x in (session.device_type or "", session.browser or "", session.os or "") if x
+    ) or "—"
+    ref = (session.referrer or "—")[:120]
+    traffic = session.traffic_type or "—"
+
+    page_views = list(session.page_views.order_by("started_at")[:15])
+    events = list(session.events.order_by("-created_at")[:12])
+    total_seconds = sum((pv.duration_seconds or 0) for pv in page_views)
+    total_m = total_seconds // 60
+    total_s = total_seconds % 60
+
+    lines = [
+        "PORTFOLIO — VISITOR DETAIL",
+        "========================",
+        f"IP:       {session.ip_address or '—'}",
+        f"Country:  {flag}{session.country_code or '—'}",
+        f"Device:   {dev}",
+        f"Traffic:  {traffic}",
+        f"Referrer: {ref}",
+        f"First:    {started}",
+        f"Last:     {last_seen}",
+        f"Time on site (sum pages): {total_m}m {total_s}s",
+        "",
+        f"PAGES ({len(page_views)})",
+    ]
+    for pv in page_views:
+        scr = f", scroll {pv.max_scroll_percent}%" if pv.max_scroll_percent is not None else ""
+        lines.append(f"  • {pv.path or '/'} — {pv.duration_seconds or 0}s{scr}")
+
+    if events:
+        lines.extend(["", f"RECENT ACTIVITY ({len(events)})"])
+        for ev in events:
+            tgt = (ev.target or "")[:40]
+            lines.append(f"  • {ev.event_type}  {ev.path or ''}  {tgt}".rstrip())
+
+    return "\n".join(lines)
+
+
+def _format_site_pulse_plain():
+    """Short 'what is happening now' block for Telegram /more."""
+    now = timezone.now()
+    cutoff = now - timezone.timedelta(minutes=5)
+    live = VisitorSession.objects.filter(last_seen_at__gte=cutoff).count()
+    unread = ContactMessage.objects.filter(read=False).count()
+    last_ev = VisitorEvent.objects.order_by("-created_at").first()
+    lines = [
+        "SITE PULSE (now)",
+        "----------------",
+        f"Visitors active (~5 min): {live}",
+        f"Unread contact inbox:    {unread}",
+    ]
+    if last_ev:
+        at = last_ev.created_at
+        ts = timezone.localtime(at).strftime("%H:%M:%S") if at else ""
+        tgt = (last_ev.target or "")[:40]
+        lines.append(
+            f"Last tracked event: {last_ev.event_type} @ {last_ev.path or '/'} — {tgt} ({ts})"
+        )
+    return "\n".join(lines)
+
+
+def _telegram_more_keyboard():
+    """Inline actions under /more reply."""
+    return {
+        "inline_keyboard": [
+            [{"text": "Mark latest contact read", "callback_data": "inbox_read_latest"}],
+            [{"text": "Mark all unread contact read", "callback_data": "inbox_read_all"}],
+        ]
+    }
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def telegram_webhook(request):
     """
     POST /api/telegram/webhook — receives Telegram updates. Set webhook:
     https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_BASE>/api/telegram/webhook
-    Handles: /more (details for last notified visitor), /visitors (last 5), /help.
+    Handles: /more (plain text + inbox actions), /visitors, /help, inline mark-read.
     """
     import json
     from django.core.cache import cache
     from .telegram_notify import (
         send_telegram_message,
+        answer_telegram_callback_query,
         TELEGRAM_LAST_VISITOR_CACHE_KEY,
+        TELEGRAM_LAST_CONTACT_ID_KEY,
         _escape_html,
         _country_flag_emoji,
     )
@@ -793,6 +904,40 @@ def telegram_webhook(request):
     except Exception:
         return JsonResponse({"ok": True})
 
+    # Inline keyboard callbacks (mark read)
+    cb = data.get("callback_query")
+    if cb and isinstance(cb, dict):
+        cq_id = cb.get("id")
+        chat = (cb.get("message") or {}).get("chat") or {}
+        chat_id = chat.get("id")
+        raw_data = str(cb.get("data") or "")[:64]
+        answer_telegram_callback_query(cq_id, text="Updated.")
+        if chat_id and raw_data == "inbox_read_all":
+            n = ContactMessage.objects.filter(read=False).update(read=True)
+            send_telegram_message(
+                f"Marked {n} contact message(s) as read.\nOwner inbox will show them as read.",
+                parse_mode=None,
+                chat_id=chat_id,
+            )
+        elif chat_id and raw_data == "inbox_read_latest":
+            pk = cache.get(TELEGRAM_LAST_CONTACT_ID_KEY)
+            if pk:
+                upd = ContactMessage.objects.filter(pk=int(pk), read=False).update(read=True)
+                send_telegram_message(
+                    "Latest notified contact message marked as read."
+                    if upd
+                    else "That message was already read.",
+                    parse_mode=None,
+                    chat_id=chat_id,
+                )
+            else:
+                send_telegram_message(
+                    "No cached “latest” message from Telegram. Use the dashboard or Mark all.",
+                    parse_mode=None,
+                    chat_id=chat_id,
+                )
+        return JsonResponse({"ok": True})
+
     message = (data.get("message") or data.get("channel_post")) or {}
     chat_id = message.get("chat", {}).get("id")
     text = (message.get("text") or "").strip()
@@ -800,48 +945,73 @@ def telegram_webhook(request):
     if not chat_id or not text:
         return JsonResponse({"ok": True})
 
-    cmd = text.lower().split()[0] if text.split() else text.lower()
-    # Treat /more, "more", "give more info", "details" etc.
-    ask_more = cmd in ("/more", "more", "details", "info") or "more" in text.lower() or "detail" in text.lower()
+    tw = text.split()
+    first = tw[0].lower() if tw else ""
+    if first.startswith("/") and "@" in first:
+        first = first.split("@", 1)[0]
+
+    tl = text.strip().lower()
+    ask_more = first in ("/more", "/details") or tl in ("more", "details", "info")
 
     if ask_more:
         session_id = cache.get(TELEGRAM_LAST_VISITOR_CACHE_KEY)
+        if not session_id:
+            latest = (
+                VisitorSession.objects.order_by("-last_seen_at")
+                .values_list("session_id", flat=True)
+                .first()
+            )
+            session_id = latest
         if session_id:
             try:
-                session = VisitorSession.objects.prefetch_related("page_views", "events").get(session_id=session_id)
-                reply = _format_visitor_detail(session)
-                send_telegram_message(reply, chat_id=chat_id)
+                session = VisitorSession.objects.prefetch_related("page_views", "events").get(
+                    session_id=session_id
+                )
+                body = _format_site_pulse_plain() + "\n\n" + _format_visitor_detail_plain(session)
+                send_telegram_message(
+                    body,
+                    parse_mode=None,
+                    chat_id=chat_id,
+                    reply_markup=_telegram_more_keyboard(),
+                )
             except VisitorSession.DoesNotExist:
-                send_telegram_message("No visitor data for that session.", chat_id=chat_id)
+                send_telegram_message(
+                    "No visitor session found. Try /visitors.",
+                    parse_mode=None,
+                    chat_id=chat_id,
+                )
         else:
             send_telegram_message(
-                "No recent visitor was notified. I’ll give more details when you reply /more after the next new visitor.",
+                "No visitor sessions in the database yet.\n\n" + _format_site_pulse_plain(),
+                parse_mode=None,
                 chat_id=chat_id,
+                reply_markup=_telegram_more_keyboard(),
             )
         return JsonResponse({"ok": True})
 
+    cmd = first
     if cmd in ("/visitors", "/list"):
         sessions = VisitorSession.objects.prefetch_related("page_views").order_by("-started_at")[:5]
         if not sessions:
-            send_telegram_message("No visitors yet.", chat_id=chat_id)
+            send_telegram_message("No visitors yet.", parse_mode=None, chat_id=chat_id)
         else:
-            parts = ["<b>Last 5 visitors</b>", ""]
+            parts = ["LAST 5 VISITORS", "-----------------"]
             for s in sessions:
-                flag = _country_flag_emoji(s.country_code) if s.country_code else "🌍"
-                ip = _escape_html(str(s.ip_address or "—"))
-                parts.append(f"{flag} {ip} — {s.started_at.strftime('%Y-%m-%d %H:%M')}")
-            send_telegram_message("\n".join(parts), chat_id=chat_id)
+                fl = _country_flag_emoji(s.country_code) if s.country_code else ""
+                ip = str(s.ip_address or "—")
+                parts.append(f"{fl} {ip} — {s.started_at.strftime('%Y-%m-%d %H:%M')}")
+            send_telegram_message("\n".join(parts), parse_mode=None, chat_id=chat_id)
         return JsonResponse({"ok": True})
 
     if cmd in ("/help", "/start"):
         help_text = (
-            "<b>Portfolio bot</b>\n\n"
-            "<b>/more</b> — full details for the last announced visitor (pages, time, activity)\n"
-            "<b>/visitors</b> — last 5 visitors\n"
-            "<b>/help</b> — this message\n\n"
-            "You can also say \"more\" or \"details\" after a new visitor notification."
+            "PORTFOLIO BOT\n"
+            "============\n"
+            "/more     — live pulse + last visitor detail (plain text) + mark-read buttons\n"
+            "/visitors — last 5 visitors\n"
+            "/help     — this help\n"
         )
-        send_telegram_message(help_text, chat_id=chat_id)
+        send_telegram_message(help_text, parse_mode=None, chat_id=chat_id)
         return JsonResponse({"ok": True})
 
     return JsonResponse({"ok": True})

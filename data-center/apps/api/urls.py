@@ -13,6 +13,7 @@ urlpatterns = [
     path("owner/visitors", views.owner_visitors),
     path("owner/visitors/events", views.owner_visitors_events),
     path("owner/messages", views.owner_messages),
+    path("owner/messages/<int:pk>", views.owner_message_detail),
     path("owner/content", views.owner_content_list),
     path("owner/content/<slug>", views.owner_content_detail),
     path("track", views.track),
