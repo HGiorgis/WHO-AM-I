@@ -42,7 +42,10 @@ const PERIODS = [
 /** Country code (e.g. "US") → flag emoji (e.g. 🇺🇸) */
 function countryFlag(code) {
   if (!code || typeof code !== "string" || code.length !== 2) return "—";
-  const a = code.toUpperCase().split("").map((c) => 0x1f1e6 - 65 + c.charCodeAt(0));
+  const a = code
+    .toUpperCase()
+    .split("")
+    .map((c) => 0x1f1e6 - 65 + c.charCodeAt(0));
   return a.length === 2 ? String.fromCodePoint(...a) : "—";
 }
 
@@ -51,7 +54,10 @@ function formatDateTime(isoStr) {
   try {
     const d = new Date(isoStr);
     if (isNaN(d.getTime())) return isoStr;
-    return d.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" });
+    return d.toLocaleString(undefined, {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
   } catch {
     return isoStr;
   }
@@ -81,7 +87,9 @@ function formatMetaScalar(val) {
   if (val == null) return "";
   if (typeof val === "number") {
     if (!Number.isFinite(val)) return "—";
-    return Math.abs(val) < 10 && !Number.isInteger(val) ? String(Math.round(val * 100) / 100) : String(Math.round(val));
+    return Math.abs(val) < 10 && !Number.isInteger(val)
+      ? String(Math.round(val * 100) / 100)
+      : String(Math.round(val));
   }
   if (typeof val === "boolean") return val ? "yes" : "no";
   if (typeof val === "object") return "object";
@@ -108,7 +116,9 @@ function HeatmapMetaPreview({ meta }) {
   const vw = 104;
   const vh = 40;
   if (!pts.length) {
-    return <span className="text-ink/40 font-mono text-[10px]">No samples</span>;
+    return (
+      <span className="text-ink/40 font-mono text-[10px]">No samples</span>
+    );
   }
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -139,7 +149,9 @@ function HeatmapMetaPreview({ meta }) {
           {pts.length} sample{pts.length !== 1 ? "s" : ""}
         </span>
         {meta?.w != null && meta?.h != null ? (
-          <span className="font-mono text-[9px] text-ink/40">{meta.w}×{meta.h}px</span>
+          <span className="font-mono text-[9px] text-ink/40">
+            {meta.w}×{meta.h}px
+          </span>
         ) : null}
       </div>
     </div>
@@ -166,7 +178,9 @@ function EventMetaSummary({ ev }) {
           </span>
         ))}
         {keys.length > 5 ? (
-          <span className="font-mono text-[9px] text-ink/35">+{keys.length - 5}</span>
+          <span className="font-mono text-[9px] text-ink/35">
+            +{keys.length - 5}
+          </span>
         ) : null}
       </div>
     );
@@ -177,7 +191,9 @@ function EventMetaSummary({ ev }) {
   }
 
   if (rawType === "web_vitals") {
-    const entries = Object.entries(meta).filter(([k, v]) => !k.startsWith("_") && v != null && v !== "");
+    const entries = Object.entries(meta).filter(
+      ([k, v]) => !k.startsWith("_") && v != null && v !== "",
+    );
     const limited = entries.slice(0, 4);
     if (!limited.length) {
       return <span className="text-ink/35 font-mono text-[10px]">—</span>;
@@ -192,7 +208,9 @@ function EventMetaSummary({ ev }) {
           >
             <Zap className="w-3 h-3 text-[#2d8bc4] shrink-0 opacity-90" />
             <span className="text-ink/45">{k}</span>
-            <span className="font-medium tabular-nums">{formatMetaScalar(v)}</span>
+            <span className="font-medium tabular-nums">
+              {formatMetaScalar(v)}
+            </span>
           </span>
         ))}
       </div>
@@ -200,7 +218,9 @@ function EventMetaSummary({ ev }) {
   }
 
   if (rawType === "js_error") {
-    const entries = Object.entries(meta).filter(([k, v]) => !k.startsWith("_") && v != null && v !== "");
+    const entries = Object.entries(meta).filter(
+      ([k, v]) => !k.startsWith("_") && v != null && v !== "",
+    );
     const limited = entries.slice(0, 3);
     if (!limited.length) {
       return <span className="text-ink/35 font-mono text-[10px]">—</span>;
@@ -250,7 +270,9 @@ function EventMetaSummary({ ev }) {
           title={`${k}: ${String(meta[k])}`}
         >
           <span className="text-ink/45 shrink-0">{k}</span>
-          <span className="text-ink/80 truncate">{formatMetaScalar(meta[k])}</span>
+          <span className="text-ink/80 truncate">
+            {formatMetaScalar(meta[k])}
+          </span>
         </span>
       ))}
     </div>
@@ -260,8 +282,7 @@ function EventMetaSummary({ ev }) {
 function eventTypeBadge(ev) {
   const t = String(ev?.event_type || ev?.type || "—").toLowerCase();
   const label = (ev?.event_type || ev?.type || "—").toUpperCase();
-  let cls =
-    "border-ink/15 bg-ink/[0.06] text-ink/70";
+  let cls = "border-ink/15 bg-ink/[0.06] text-ink/70";
   let Icon = MousePointer;
   if (t === "heatmap") {
     cls = "border-amber-700/25 bg-amber-500/10 text-amber-900/90";
@@ -371,7 +392,15 @@ export default function OwnerDashboard() {
     getVisitorStats(period)
       .then((data) => {
         if (!cancelled) {
-          setVisitorData(data || { visitors: [], summary: {}, events: [], eventGroups: [], insights: {} });
+          setVisitorData(
+            data || {
+              visitors: [],
+              summary: {},
+              events: [],
+              eventGroups: [],
+              insights: {},
+            },
+          );
           setVisitorError(null);
         }
       })
@@ -384,13 +413,18 @@ export default function OwnerDashboard() {
             eventGroups: [],
             insights: {},
           });
-          setVisitorError(err?.message || "Could not load visitor data. Check VITE_OWNER_API_URL and owner key.");
+          setVisitorError(
+            err?.message ||
+              "Could not load visitor data. Check VITE_OWNER_API_URL and owner key.",
+          );
         }
       })
       .finally(() => {
         if (!cancelled) setLoadingVisitors(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [period]);
 
   useEffect(() => {
@@ -409,7 +443,9 @@ export default function OwnerDashboard() {
       .finally(() => {
         if (!cancelled) setLoadingProjects(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tab]);
 
   useEffect(() => {
@@ -426,7 +462,9 @@ export default function OwnerDashboard() {
       .finally(() => {
         if (!cancelled) setLoadingMessages(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [tab]);
 
   return (
@@ -492,11 +530,17 @@ export default function OwnerDashboard() {
 }
 
 function VisitorMonitor({ period, setPeriod, data, loading, error }) {
-  const { visitors = [], summary = {}, events = [], eventGroups: eventGroupsRaw = [], insights = {} } = data;
+  const {
+    visitors = [],
+    summary = {},
+    events = [],
+    eventGroups: eventGroupsRaw = [],
+    insights = {},
+  } = data;
   const eventGroups = Array.isArray(eventGroupsRaw) ? eventGroupsRaw : [];
   const totalTrackedEvents = eventGroups.reduce(
     (n, g) => n + (Array.isArray(g?.events) ? g.events.length : 0),
-    0
+    0,
   );
   const { totalVisits = 0, totalTime = 0, byPage = [] } = summary;
   const {
@@ -518,11 +562,11 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
 
   const visitorsPaginated = visitors.slice(
     (visitorPage - 1) * VISITORS_PAGE_SIZE,
-    visitorPage * VISITORS_PAGE_SIZE
+    visitorPage * VISITORS_PAGE_SIZE,
   );
   const eventGroupsPaginated = eventGroups.slice(
     (eventPage - 1) * EVENT_GROUPS_PAGE_SIZE,
-    eventPage * EVENT_GROUPS_PAGE_SIZE
+    eventPage * EVENT_GROUPS_PAGE_SIZE,
   );
 
   return (
@@ -545,8 +589,8 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
             Visitor monitor
           </h2>
           <p className="text-sm text-ink/60 mt-2 max-w-xl">
-            Who visited, which page, how long they stayed, and what they clicked.
-            Data comes from your backend when connected.
+            Who visited, which page, how long they stayed, and what they
+            clicked. Data comes from your backend when connected.
           </p>
         </div>
         <div className="flex border border-ink/15 p-1 gap-0">
@@ -555,7 +599,9 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               key={p.value}
               onClick={() => setPeriod(p.value)}
               className={`px-4 py-2 font-mono text-[11px] uppercase tracking-widest transition-colors ${
-                period === p.value ? "bg-ink text-paper" : "text-ink/60 hover:bg-ink/5"
+                period === p.value
+                  ? "bg-ink text-paper"
+                  : "text-ink/60 hover:bg-ink/5"
               }`}
             >
               {p.label}
@@ -571,30 +617,38 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
           Overview
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          { label: "Total visits", value: totalVisits, icon: Users },
-          { label: "Total time (min)", value: Math.round(totalTime || 0), icon: Clock },
-          { label: "Events (clicks)", value: totalTrackedEvents || events.length, icon: MousePointer },
-          { label: "Live now (~5m)", value: liveNow, icon: Activity },
-          { label: "Avg scroll %", value: avgScrollPct, icon: BarChart2 },
-        ].map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="border border-ink/10 p-6 flex items-center gap-4"
-          >
-            <div className="w-10 h-10 border border-ink/15 flex items-center justify-center">
-              <Icon className="w-5 h-5 text-ink/60" />
+          {[
+            { label: "Total visits", value: totalVisits, icon: Users },
+            {
+              label: "Total time (min)",
+              value: Math.round(totalTime || 0),
+              icon: Clock,
+            },
+            {
+              label: "Events (clicks)",
+              value: totalTrackedEvents || events.length,
+              icon: MousePointer,
+            },
+            { label: "Live now (~5m)", value: liveNow, icon: Activity },
+            { label: "Avg scroll %", value: avgScrollPct, icon: BarChart2 },
+          ].map(({ label, value, icon: Icon }) => (
+            <div
+              key={label}
+              className="border border-ink/10 p-6 flex items-center gap-4"
+            >
+              <div className="w-10 h-10 border border-ink/15 flex items-center justify-center">
+                <Icon className="w-5 h-5 text-ink/60" />
+              </div>
+              <div>
+                <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+                  {label}
+                </p>
+                <p className="font-syne font-bold text-2xl text-ink mt-0.5">
+                  {loading ? "—" : value}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
-                {label}
-              </p>
-              <p className="font-syne font-bold text-2xl text-ink mt-0.5">
-                {loading ? "—" : value}
-              </p>
-            </div>
-          </div>
-        ))}
+          ))}
         </div>
 
         <div className="border border-ink/10">
@@ -616,7 +670,9 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                   key={i}
                   className="px-6 py-4 flex items-center justify-between"
                 >
-                  <span className="font-medium text-ink">{row.page || row.path || "—"}</span>
+                  <span className="font-medium text-ink">
+                    {row.page || row.path || "—"}
+                  </span>
                   <span className="font-mono text-sm text-ink/60 text-right max-w-[55%]">
                     {row.duration != null ? `${row.duration} min` : ""}
                     {row.duration != null && row.visits != null ? " · " : ""}
@@ -630,7 +686,9 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               ))
             ) : (
               <div className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-                {error ? "Fix connection to see data." : "No data for this period. Visit portfolio pages to generate tracking data."}
+                {error
+                  ? "Fix connection to see data."
+                  : "No data for this period. Visit portfolio pages to generate tracking data."}
               </div>
             )}
           </div>
@@ -645,24 +703,33 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="border border-ink/10 p-6 space-y-3">
-            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Devices</p>
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+              Devices
+            </p>
             {loading ? (
               <p className="text-ink/40 font-mono text-sm">…</p>
             ) : devices.length ? (
               <ul className="space-y-1 font-mono text-xs text-ink/80">
                 {devices.map((d) => (
-                  <li key={d.device_type} className="flex justify-between gap-4">
+                  <li
+                    key={d.device_type}
+                    className="flex justify-between gap-4"
+                  >
                     <span>{d.device_type || "—"}</span>
                     <span className="text-ink/50">{d.c}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-ink/40 font-mono text-sm">No device data yet.</p>
+              <p className="text-ink/40 font-mono text-sm">
+                No device data yet.
+              </p>
             )}
           </div>
           <div className="border border-ink/10 p-6 space-y-3">
-            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Browsers</p>
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+              Browsers
+            </p>
             {loading ? (
               <p className="text-ink/40 font-mono text-sm">…</p>
             ) : browsers.length ? (
@@ -675,28 +742,39 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                 ))}
               </ul>
             ) : (
-              <p className="text-ink/40 font-mono text-sm">No browser data yet.</p>
+              <p className="text-ink/40 font-mono text-sm">
+                No browser data yet.
+              </p>
             )}
           </div>
           <div className="border border-ink/10 p-6 space-y-3">
-            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Traffic type</p>
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+              Traffic type
+            </p>
             {loading ? (
               <p className="text-ink/40 font-mono text-sm">…</p>
             ) : trafficTypes.length ? (
               <ul className="space-y-1 font-mono text-xs text-ink/80">
                 {trafficTypes.map((t) => (
-                  <li key={t.traffic_type} className="flex justify-between gap-4">
+                  <li
+                    key={t.traffic_type}
+                    className="flex justify-between gap-4"
+                  >
                     <span>{t.traffic_type || "—"}</span>
                     <span className="text-ink/50">{t.c}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-ink/40 font-mono text-sm">No traffic buckets yet.</p>
+              <p className="text-ink/40 font-mono text-sm">
+                No traffic buckets yet.
+              </p>
             )}
           </div>
           <div className="border border-ink/10 p-6 space-y-3">
-            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Top referrers</p>
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+              Top referrers
+            </p>
             {loading ? (
               <p className="text-ink/40 font-mono text-sm">…</p>
             ) : topReferrers.length ? (
@@ -714,20 +792,27 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
           </div>
         </div>
         <div className="border border-ink/10 p-6 space-y-3">
-          <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Common paths (funnel-style)</p>
+          <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
+            Common paths (funnel-style)
+          </p>
           {loading ? (
             <p className="text-ink/40 font-mono text-sm">…</p>
           ) : topFlows.length ? (
             <ul className="space-y-2 font-mono text-[11px] text-ink/80 leading-relaxed">
               {topFlows.map((f) => (
-                <li key={f.flow} className="flex justify-between gap-4 border-b border-ink/5 pb-2 last:border-0">
+                <li
+                  key={f.flow}
+                  className="flex justify-between gap-4 border-b border-ink/5 pb-2 last:border-0"
+                >
                   <span className="break-all">{f.flow}</span>
                   <span className="text-ink/50 shrink-0">{f.count}×</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-ink/40 font-mono text-sm">Need multi-page sessions to build path flows.</p>
+            <p className="text-ink/40 font-mono text-sm">
+              Need multi-page sessions to build path flows.
+            </p>
           )}
         </div>
       </section>
@@ -775,40 +860,53 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                   </tr>
                 ) : visitorsPaginated.length > 0 ? (
                   visitorsPaginated.map((v, i) => {
-                  const ip = v.ip ?? v.ip_address ?? "—";
-                  const country = v.country ?? v.country_code ?? "—";
-                  const code = v.country_code ?? (v.country && v.country.length === 2 ? v.country : null);
-                  const rowIndex = (visitorPage - 1) * VISITORS_PAGE_SIZE + i;
-                  return (
-                    <tr key={v.id ?? v.session_id ?? rowIndex} className="border-b border-ink/5">
-                      <td className="px-6 py-3 font-mono text-xs text-ink/80">
-                        {ip}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-ink">
-                        {typeof country === "string" && country.length > 2 ? country : code || "—"}
-                      </td>
-                      <td className="px-6 py-3 text-lg leading-none">
-                        {code ? countryFlag(code) : "—"}
-                      </td>
-                      <td className="px-6 py-3 font-mono text-[10px] text-ink/70 max-w-[120px]">
-                        {[v.device_type, v.browser].filter(Boolean).join(" · ") || "—"}
-                      </td>
-                      <td className="px-6 py-3 font-mono text-[10px] text-ink/60">
-                        {v.traffic_type || "—"}
-                      </td>
-                      <td className="px-6 py-3 font-mono text-xs text-ink/60">
-                        {formatDateTime(v.last_seen_at ?? v.lastSeenAt)}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-                    No visitors yet. Connect backend and add tracking to your site.
-                  </td>
-                </tr>
-              )}
+                    const ip = v.ip ?? v.ip_address ?? "—";
+                    const country = v.country ?? v.country_code ?? "—";
+                    const code =
+                      v.country_code ??
+                      (v.country && v.country.length === 2 ? v.country : null);
+                    const rowIndex = (visitorPage - 1) * VISITORS_PAGE_SIZE + i;
+                    return (
+                      <tr
+                        key={v.id ?? v.session_id ?? rowIndex}
+                        className="border-b border-ink/5"
+                      >
+                        <td className="px-6 py-3 font-mono text-xs text-ink/80">
+                          {ip}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-ink">
+                          {typeof country === "string" && country.length > 2
+                            ? country
+                            : code || "—"}
+                        </td>
+                        <td className="px-6 py-3 text-lg leading-none">
+                          {code ? countryFlag(code) : "—"}
+                        </td>
+                        <td className="px-6 py-3 font-mono text-[10px] text-ink/70 max-w-[120px]">
+                          {[v.device_type, v.browser]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </td>
+                        <td className="px-6 py-3 font-mono text-[10px] text-ink/60">
+                          {v.traffic_type || "—"}
+                        </td>
+                        <td className="px-6 py-3 font-mono text-xs text-ink/60">
+                          {formatDateTime(v.last_seen_at ?? v.lastSeenAt)}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={6}
+                      className="px-6 py-12 text-center text-ink/50 font-mono text-sm"
+                    >
+                      No visitors yet. Connect backend and add tracking to your
+                      site.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -828,8 +926,8 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
           Clicks & events
         </h3>
         <p className="text-sm text-ink/55 max-w-2xl">
-          Events are grouped by session (same visitor / IP). Open a row to see how that visitor engaged — clicks,
-          heatmaps, and vitals in order.
+          Events are grouped by session (same visitor / IP). Open a row to see
+          how that visitor engaged — clicks, heatmaps, and vitals in order.
         </p>
         <div className="border border-ink/10 divide-y divide-ink/10 overflow-hidden">
           {loading ? (
@@ -843,7 +941,9 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               const code = grp.country_code || "";
               const sid = grp.session_id || "";
               const sidShort = sid.length > 18 ? `${sid.slice(0, 18)}…` : sid;
-              const dev = [grp.device_type, grp.browser].filter(Boolean).join(" · ") || "—";
+              const dev =
+                [grp.device_type, grp.browser].filter(Boolean).join(" · ") ||
+                "—";
               const list = Array.isArray(grp.events) ? grp.events : [];
               const gidx = (eventPage - 1) * EVENT_GROUPS_PAGE_SIZE + gi;
               return (
@@ -855,9 +955,16 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                     <ChevronDown className="w-4 h-4 shrink-0 mt-0.5 text-ink/40 transition-transform group-open:rotate-180" />
                     <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
-                        <span className="text-lg leading-none shrink-0">{code ? countryFlag(code) : "—"}</span>
-                        <span className="font-mono text-sm text-ink font-medium">{ip}</span>
-                        <span className="font-mono text-[10px] text-ink/45 truncate max-w-[14rem]" title={sid}>
+                        <span className="text-lg leading-none shrink-0">
+                          {code ? countryFlag(code) : "—"}
+                        </span>
+                        <span className="font-mono text-sm text-ink font-medium">
+                          {ip}
+                        </span>
+                        <span
+                          className="font-mono text-[10px] text-ink/45 truncate max-w-[14rem]"
+                          title={sid}
+                        >
                           {sidShort || "no session id"}
                         </span>
                       </div>
@@ -865,8 +972,12 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                         <span>
                           {list.length} event{list.length !== 1 ? "s" : ""}
                         </span>
-                        <span className="normal-case tracking-normal text-ink/55">{dev}</span>
-                        <span className="text-ink/40">{formatDateTime(grp.last_seen_at)}</span>
+                        <span className="normal-case tracking-normal text-ink/55">
+                          {dev}
+                        </span>
+                        <span className="text-ink/40">
+                          {formatDateTime(grp.last_seen_at)}
+                        </span>
                       </div>
                     </div>
                   </summary>
@@ -890,12 +1001,19 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                       </thead>
                       <tbody>
                         {list.map((ev, ei) => (
-                          <tr key={ev.id ?? `${gidx}-${ei}`} className="border-b border-ink/5 align-top">
+                          <tr
+                            key={ev.id ?? `${gidx}-${ei}`}
+                            className="border-b border-ink/5 align-top"
+                          >
                             <td className="px-4 md:px-6 py-2.5 font-mono text-xs text-ink/70 whitespace-nowrap">
                               {formatDateTime(ev.timestamp || ev.created_at)}
                             </td>
-                            <td className="px-4 md:px-6 py-2.5">{eventPageTargetCell(ev)}</td>
-                            <td className="px-4 md:px-6 py-2.5">{eventTypeBadge(ev)}</td>
+                            <td className="px-4 md:px-6 py-2.5">
+                              {eventPageTargetCell(ev)}
+                            </td>
+                            <td className="px-4 md:px-6 py-2.5">
+                              {eventTypeBadge(ev)}
+                            </td>
                             <td className="px-4 md:px-6 py-2.5 min-w-[12rem] max-w-[26rem]">
                               <EventMetaSummary ev={ev} />
                             </td>
@@ -943,7 +1061,7 @@ function MessagesSection({ messages, loading, setMessages }) {
     try {
       await patchOwnerMessageRead(id, true);
       setMessages((prev) =>
-        prev.map((x) => (x.id === id ? { ...x, read: true } : x))
+        prev.map((x) => (x.id === id ? { ...x, read: true } : x)),
       );
       notifyOwnerInboxUpdated();
     } catch (e) {
@@ -980,8 +1098,9 @@ function MessagesSection({ messages, loading, setMessages }) {
             Contact messages
           </h2>
           <p className="text-sm text-ink/60 mt-1">
-            Messages sent from the site contact form. You also get Telegram notifications for each new message.
-            Mark as read when handled — the welcome summary only counts unread.
+            Messages sent from the site contact form. You also get Telegram
+            notifications for each new message. Mark as read when handled — the
+            welcome summary only counts unread.
           </p>
         </div>
         {messages.length > 0 && unreadCount > 0 && (
@@ -1061,7 +1180,13 @@ function MessagesSection({ messages, loading, setMessages }) {
   );
 }
 
-function ProjectManagement({ projects, setProjects, formState, setFormState, loading }) {
+function ProjectManagement({
+  projects,
+  setProjects,
+  formState,
+  setFormState,
+  loading,
+}) {
   const [submitting, setSubmitting] = useState(false);
   const emptyFeatureForm = () => ({
     f1t: "",
@@ -1129,7 +1254,7 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
       subtitle: p.subtitle || "",
       desc: p.description || p.desc || "",
       year: p.year || new Date().getFullYear().toString(),
-      tags: Array.isArray(p.tags) ? p.tags.join(", ") : (p.tags || ""),
+      tags: Array.isArray(p.tags) ? p.tags.join(", ") : p.tags || "",
       liveUrl: p.live_url || p.liveUrl || "",
       githubUrl: p.github_url || p.githubUrl || "",
       coverImage: p.cover_image || p.coverImage || "",
@@ -1171,11 +1296,18 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
       description: form.desc,
       desc: form.desc,
       year: form.year,
-      tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      tags: form.tags
+        ? form.tags
+            .split(",")
+            .map((t) => t.trim())
+            .filter(Boolean)
+        : [],
       live_url: form.liveUrl || "",
       github_url: form.githubUrl || "",
       cover_image: (form.coverImage || "").trim(),
-      gallery_images: [form.gallery1, form.gallery2].map((u) => (u || "").trim()).filter(Boolean),
+      gallery_images: [form.gallery1, form.gallery2]
+        .map((u) => (u || "").trim())
+        .filter(Boolean),
       feature_highlights,
       featured: form.featured,
       color: form.color,
@@ -1184,7 +1316,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
       if (formState?.edit?.id) {
         await updateProject(formState.edit.id, payload);
         setProjects((prev) =>
-          prev.map((p) => (p.id === formState.edit.id ? { ...p, ...payload } : p))
+          prev.map((p) =>
+            p.id === formState.edit.id ? { ...p, ...payload } : p,
+          ),
         );
       } else {
         const created = await createProject(payload);
@@ -1210,11 +1344,7 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-10"
-    >
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
         <div>
           <span className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">
@@ -1224,8 +1354,8 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
             Projects
           </h2>
           <p className="text-sm text-ink/60 mt-2 max-w-xl">
-            Add and manage portfolio projects. Data is saved to your backend when
-            connected.
+            Add and manage portfolio projects. Data is saved to your backend
+            when connected.
           </p>
         </div>
         <button
@@ -1314,7 +1444,7 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
 
       {/* Add/Edit modal */}
       {formState?.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/20">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/10">
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1338,7 +1468,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 </label>
                 <input
                   value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, title: e.target.value }))
+                  }
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                   required
                 />
@@ -1349,7 +1481,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 </label>
                 <input
                   value={form.subtitle}
-                  onChange={(e) => setForm((f) => ({ ...f, subtitle: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, subtitle: e.target.value }))
+                  }
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                 />
               </div>
@@ -1359,7 +1493,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 </label>
                 <textarea
                   value={form.desc}
-                  onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, desc: e.target.value }))
+                  }
                   rows={3}
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40 resize-none"
                   required
@@ -1372,7 +1508,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                   </label>
                   <input
                     value={form.year}
-                    onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, year: e.target.value }))
+                    }
                     className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                   />
                 </div>
@@ -1383,7 +1521,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                   <input
                     type="color"
                     value={form.color}
-                    onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, color: e.target.value }))
+                    }
                     className="w-full h-10 border border-ink/15 cursor-pointer"
                   />
                 </div>
@@ -1394,7 +1534,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 </label>
                 <input
                   value={form.tags}
-                  onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, tags: e.target.value }))
+                  }
                   placeholder="Laravel, React, API"
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                 />
@@ -1406,7 +1548,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 <input
                   type="url"
                   value={form.liveUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, liveUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, liveUrl: e.target.value }))
+                  }
                   placeholder="https://..."
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                 />
@@ -1418,7 +1562,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 <input
                   type="url"
                   value={form.githubUrl}
-                  onChange={(e) => setForm((f) => ({ ...f, githubUrl: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, githubUrl: e.target.value }))
+                  }
                   placeholder="https://github.com/..."
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                 />
@@ -1434,7 +1580,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                   <input
                     type="url"
                     value={form.coverImage}
-                    onChange={(e) => setForm((f) => ({ ...f, coverImage: e.target.value }))}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, coverImage: e.target.value }))
+                    }
                     placeholder="https://…"
                     className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
                   />
@@ -1447,7 +1595,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                     <input
                       type="url"
                       value={form.gallery1}
-                      onChange={(e) => setForm((f) => ({ ...f, gallery1: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, gallery1: e.target.value }))
+                      }
                       placeholder="https://…"
                       className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
                     />
@@ -1459,7 +1609,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                     <input
                       type="url"
                       value={form.gallery2}
-                      onChange={(e) => setForm((f) => ({ ...f, gallery2: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, gallery2: e.target.value }))
+                      }
                       placeholder="https://…"
                       className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
                     />
@@ -1470,19 +1622,26 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                   const bKey = `f${n}b`;
                   const iKey = `f${n}img`;
                   return (
-                    <div key={n} className="border border-ink/10 p-3 space-y-2 bg-ink/[0.02]">
+                    <div
+                      key={n}
+                      className="border border-ink/10 p-3 space-y-2 bg-ink/[0.02]"
+                    >
                       <p className="font-mono text-[10px] uppercase tracking-widest text-ink/45">
                         Highlight {n}
                       </p>
                       <input
                         value={form[tKey]}
-                        onChange={(e) => setForm((f) => ({ ...f, [tKey]: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, [tKey]: e.target.value }))
+                        }
                         placeholder="Title"
                         className="w-full border border-ink/15 px-3 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
                       />
                       <textarea
                         value={form[bKey]}
-                        onChange={(e) => setForm((f) => ({ ...f, [bKey]: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, [bKey]: e.target.value }))
+                        }
                         placeholder="Short description"
                         rows={2}
                         className="w-full border border-ink/15 px-3 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40 resize-none"
@@ -1490,7 +1649,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                       <input
                         type="url"
                         value={form[iKey]}
-                        onChange={(e) => setForm((f) => ({ ...f, [iKey]: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, [iKey]: e.target.value }))
+                        }
                         placeholder="Image URL"
                         className="w-full border border-ink/15 px-3 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
                       />
@@ -1502,7 +1663,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                 <input
                   type="checkbox"
                   checked={form.featured}
-                  onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, featured: e.target.checked }))
+                  }
                   className="border border-ink/20"
                 />
                 <span className="font-mono text-[11px] uppercase tracking-widest text-ink/70">
@@ -1515,7 +1678,11 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                   disabled={submitting}
                   className="border border-ink bg-ink text-paper px-4 py-3 font-syne font-bold uppercase tracking-tight text-sm hover:bg-ink/90 disabled:opacity-60"
                 >
-                  {submitting ? "Saving…" : formState.edit ? "Update" : "Create"}
+                  {submitting
+                    ? "Saving…"
+                    : formState.edit
+                      ? "Update"
+                      : "Create"}
                 </button>
                 <button
                   type="button"

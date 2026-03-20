@@ -29,7 +29,9 @@ const ICON_MAP = {
 };
 
 function normalizeFeatureHighlights(raw) {
-  const list = Array.isArray(raw) ? raw.map((x) => (x && typeof x === "object" ? x : {})) : [];
+  const list = Array.isArray(raw)
+    ? raw.map((x) => (x && typeof x === "object" ? x : {}))
+    : [];
   const out = [];
   for (let i = 0; i < 3; i++) {
     const h = list[i] || {};
@@ -79,7 +81,9 @@ function mapApiProjectToUi(p, index) {
     githubUrl: p.github_url || p.githubUrl,
     coverImage: p.cover_image || p.coverImage || "",
     galleryImages: gallery.filter(Boolean).slice(0, 2),
-    featureHighlights: normalizeFeatureHighlights(p.feature_highlights || p.featureHighlights),
+    featureHighlights: normalizeFeatureHighlights(
+      p.feature_highlights || p.featureHighlights,
+    ),
   };
 }
 
@@ -94,12 +98,16 @@ const cats = [
 
 /** Lowercase “skill” text: tags + title + subtitle + description (for filter matching). */
 function projectSearchBlob(p) {
-  const pieces = [...(p.tags || []), p.title, p.subtitle, p.desc].filter(Boolean);
+  const pieces = [...(p.tags || []), p.title, p.subtitle, p.desc].filter(
+    Boolean,
+  );
   return pieces.join(" ").toLowerCase();
 }
 
 function normalizedTags(p) {
-  return (p.tags || []).map((t) => String(t).toLowerCase().trim()).filter(Boolean);
+  return (p.tags || [])
+    .map((t) => String(t).toLowerCase().trim())
+    .filter(Boolean);
 }
 
 /** Any needle matches blob or a whole tag (handles "react" vs "react.js"). */
@@ -273,7 +281,9 @@ function projectMatchesCategory(filterKey, p) {
 function ProjectDetailPopup({ project, onClose }) {
   if (!project) return null;
   const Icon = project.icon;
-  const thumbs = (project.galleryImages || []).filter((u) => String(u || "").trim());
+  const thumbs = (project.galleryImages || []).filter((u) =>
+    String(u || "").trim(),
+  );
   const highlights = meaningfulHighlights(project);
   const hasCover = !!(project.coverImage && String(project.coverImage).trim());
 
@@ -337,7 +347,9 @@ function ProjectDetailPopup({ project, onClose }) {
                     {project.subtitle}
                   </p>
                 )}
-                <p className="font-mono text-xs text-ink/40 mt-1">{project.year}</p>
+                <p className="font-mono text-xs text-ink/40 mt-1">
+                  {project.year}
+                </p>
               </div>
             </div>
             <button
@@ -359,14 +371,20 @@ function ProjectDetailPopup({ project, onClose }) {
                   key={i}
                   className="relative overflow-hidden border border-ink/10 bg-ink/[0.03] aspect-[4/3]"
                 >
-                  <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <img
+                    src={url}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
                 </div>
               ))}
             </div>
           )}
 
           {project.desc ? (
-            <p className="text-sm text-ink/80 leading-relaxed">{project.desc}</p>
+            <p className="text-sm text-ink/80 leading-relaxed">
+              {project.desc}
+            </p>
           ) : null}
 
           {highlights.length > 0 ? (
@@ -402,11 +420,15 @@ function ProjectDetailPopup({ project, onClose }) {
                       </div>
                     ) : null}
                     {(f.title &&
-                      !HIGHLIGHT_TITLE_PLACEHOLDER.test(String(f.title).trim())) ||
+                      !HIGHLIGHT_TITLE_PLACEHOLDER.test(
+                        String(f.title).trim(),
+                      )) ||
                     (f.body && String(f.body).trim()) ? (
                       <div className="p-3 flex-1 flex flex-col">
                         {f.title &&
-                        !HIGHLIGHT_TITLE_PLACEHOLDER.test(String(f.title).trim()) ? (
+                        !HIGHLIGHT_TITLE_PLACEHOLDER.test(
+                          String(f.title).trim(),
+                        ) ? (
                           <h3 className="font-syne font-bold uppercase text-xs tracking-tight text-ink leading-tight">
                             {f.title}
                           </h3>
@@ -462,7 +484,9 @@ function ProjectDetailPopup({ project, onClose }) {
               </a>
             )}
             {!project.liveUrl && !project.githubUrl && (
-              <span className="font-mono text-xs text-ink/40">No links for this project.</span>
+              <span className="font-mono text-xs text-ink/40">
+                No links for this project.
+              </span>
             )}
           </div>
         </div>
@@ -630,7 +654,11 @@ function ProjectRow({ project, index, onSelect }) {
           </span>
           {project.coverImage ? (
             <div className="w-11 h-11 shrink-0 rounded-sm overflow-hidden border border-ink/10">
-              <img src={project.coverImage} alt="" className="w-full h-full object-cover" />
+              <img
+                src={project.coverImage}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             </div>
           ) : (
             <div
@@ -750,7 +778,7 @@ export default function Projects() {
           trackEvent("scroll", "projects_more_section", PROJECTS_SCROLL_PAGE);
         }
       },
-      { threshold: 0.3, rootMargin: "0px" }
+      { threshold: 0.3, rootMargin: "0px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -848,70 +876,78 @@ export default function Projects() {
         {loading ? (
           <div className="flex flex-col items-center justify-center gap-4 py-24">
             <SquareFlowLoader size="lg" />
-            <span className="font-mono text-xs text-ink/40">Loading projects…</span>
+            <span className="font-mono text-xs text-ink/40">
+              Loading projects…
+            </span>
           </div>
         ) : projects.length === 0 ? (
-          <p className="text-center text-ink/50 font-mono text-sm py-24">No projects yet. Add some from the owner dashboard.</p>
+          <p className="text-center text-ink/50 font-mono text-sm py-24">
+            No projects yet. Add some from the owner dashboard.
+          </p>
         ) : filteredCount === 0 ? (
-          <p className="text-center text-ink/50 font-mono text-sm py-24" ref={moreSectionRef}>
-            No projects match this filter. Try &ldquo;All&rdquo; or another category.
+          <p
+            className="text-center text-ink/50 font-mono text-sm py-24"
+            ref={moreSectionRef}
+          >
+            No projects match this filter. Try &ldquo;All&rdquo; or another
+            category.
           </p>
         ) : (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={active+(featuredFiltered.length ? "_feat" : "")}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            {active === "all" && featuredFiltered.length > 0 ? (
-              <>
-                <p className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-6">
-                  Featured
-                </p>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-ink/10 mb-12 items-stretch">
-                  {featuredFiltered.map((p, i) => (
-                    <div
-                      key={p.id ?? `feat-${p.title}-${i}`}
-                      className="bg-paper flex min-h-[min(28rem,70vh)]"
-                    >
-                      <FeaturedCard
-                        project={p}
-                        index={i}
-                        onSelect={setSelectedProject}
-                        className="flex-1 w-full"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : null}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active + (featuredFiltered.length ? "_feat" : "")}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {active === "all" && featuredFiltered.length > 0 ? (
+                <>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-6">
+                    Featured
+                  </p>
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px mb-12 items-stretch">
+                    {featuredFiltered.map((p, i) => (
+                      <div
+                        key={p.id ?? `feat-${p.title}-${i}`}
+                        className="bg-paper flex min-h-[min(28rem,70vh)]"
+                      >
+                        <FeaturedCard
+                          project={p}
+                          index={i}
+                          onSelect={setSelectedProject}
+                          className="flex-1 w-full"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
 
-            {rowFiltered.length > 0 ? (
-              <>
-                <p
-                  ref={moreSectionRef}
-                  className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-4"
-                >
-                  {active === "all" && featuredFiltered.length > 0
-                    ? "More projects"
-                    : active === "all"
-                      ? "All projects"
-                      : (cats.find((c) => c.key === active)?.label ?? active)}
-                </p>
-                {rowFiltered.map((p, i) => (
-                  <ProjectRow
-                    key={p.id ?? `${p.title}-row-${i}`}
-                    project={p}
-                    index={i}
-                    onSelect={setSelectedProject}
-                  />
-                ))}
-              </>
-            ) : null}
-          </motion.div>
-        </AnimatePresence>
+              {rowFiltered.length > 0 ? (
+                <>
+                  <p
+                    ref={moreSectionRef}
+                    className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-4"
+                  >
+                    {active === "all" && featuredFiltered.length > 0
+                      ? "More projects"
+                      : active === "all"
+                        ? "All projects"
+                        : (cats.find((c) => c.key === active)?.label ?? active)}
+                  </p>
+                  {rowFiltered.map((p, i) => (
+                    <ProjectRow
+                      key={p.id ?? `${p.title}-row-${i}`}
+                      project={p}
+                      index={i}
+                      onSelect={setSelectedProject}
+                    />
+                  ))}
+                </>
+              ) : null}
+            </motion.div>
+          </AnimatePresence>
         )}
       </div>
     </div>
