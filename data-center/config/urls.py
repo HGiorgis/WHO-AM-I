@@ -24,7 +24,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Must be before catch-all SPA or /favicon.svg / manifest.json return HTML
     re_path(
-        r"^(?P<name>favicon\.svg|manifest\.json|robots\.txt)$",
+        r"^(?P<name>favicon\.svg|manifest\.json|robots\.txt|og\.png|HailegiorgisWagayeResume\.pdf)$",
         config_views.serve_frontend_root,
     ),
     path("assets/<path:path>", config_views.serve_frontend_asset),

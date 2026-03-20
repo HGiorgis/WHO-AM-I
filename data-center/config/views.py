@@ -1,5 +1,5 @@
 """
-Serve frontend SPA: index.html for all non-API routes and static files from frontend_dist/assets.
+Serve frontend SPA: index.html for all non-API routes; static files from frontend_dist root + assets/.
 Used when running in production (single Docker container).
 """
 import mimetypes
@@ -18,9 +18,20 @@ def serve_spa_index(request):
         return HttpResponse(f.read(), content_type="text/html")
 
 
+_ROOT_STATIC_FILES = frozenset(
+    {
+        "favicon.svg",
+        "manifest.json",
+        "robots.txt",
+        "og.png",
+        "HailegiorgisWagayeResume.pdf",
+    }
+)
+
+
 def serve_frontend_root(request, name):
-    """Serve root-level static files from the Vite build (favicon, manifest). Catches these before SPA fallback."""
-    if name not in ("favicon.svg", "manifest.json", "robots.txt"):
+    """Serve root-level static files from the Vite build (favicon, manifest, og:image, resume). Before SPA fallback."""
+    if name not in _ROOT_STATIC_FILES:
         raise Http404()
     file_path = (settings.FRONTEND_DIST / name).resolve()
     if (
