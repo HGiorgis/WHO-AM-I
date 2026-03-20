@@ -847,25 +847,18 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                   eventsPaginated.map((ev, i) => {
                     const rowIndex = (eventPage - 1) * EVENTS_PAGE_SIZE + i;
                     return (
-                      <tr key={ev.id ?? rowIndex} className="border-b border-ink/5">
-                        <td className="px-6 py-3 font-mono text-xs text-ink/70">
+                      <tr key={ev.id ?? rowIndex} className="border-b border-ink/5 align-top">
+                        <td className="px-6 py-3 font-mono text-xs text-ink/70 whitespace-nowrap">
                           {formatDateTime(ev.timestamp || ev.created_at)}
                         </td>
-                        <td className="px-6 py-3 text-sm text-ink">
-                          {ev.page || ev.path || ev.target || "—"}
+                        <td className="px-6 py-3">
+                          {eventPageTargetCell(ev)}
                         </td>
-                        <td className="px-6 py-3 font-mono text-xs text-ink/60 uppercase">
-                          {ev.event_type || ev.type || ev.event || "—"}
+                        <td className="px-6 py-3">
+                          {eventTypeBadge(ev)}
                         </td>
-                        <td
-                          className="px-6 py-3 font-mono text-[10px] text-ink/50 max-w-xs truncate"
-                          title={ev.meta ? JSON.stringify(ev.meta) : ""}
-                        >
-                          {ev.meta && Object.keys(ev.meta).length
-                            ? `${JSON.stringify(ev.meta).slice(0, 80)}${
-                                JSON.stringify(ev.meta).length > 80 ? "…" : ""
-                              }`
-                            : "—"}
+                        <td className="px-6 py-3 min-w-[12rem] max-w-[26rem]">
+                          <EventMetaSummary ev={ev} />
                         </td>
                       </tr>
                     );

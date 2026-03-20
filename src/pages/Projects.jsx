@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowUpRight,
@@ -42,6 +42,23 @@ function normalizeFeatureHighlights(raw) {
   return out;
 }
 
+const HIGHLIGHT_TITLE_PLACEHOLDER = /^highlight\s*\d+$/i;
+
+/** Highlights that actually have content (skip empty / placeholder-only slots). */
+function meaningfulHighlights(project) {
+  const list = project?.featureHighlights;
+  if (!Array.isArray(list)) return [];
+  return list.filter((f) => {
+    if (!f || typeof f !== "object") return false;
+    const img = String(f.image || "").trim();
+    const body = String(f.body || "").trim();
+    const title = String(f.title || "").trim();
+    if (img || body) return true;
+    if (title && !HIGHLIGHT_TITLE_PLACEHOLDER.test(title)) return true;
+    return false;
+  });
+}
+
 function mapApiProjectToUi(p, index) {
   const firstTag = p.tags && p.tags[0] ? p.tags[0].toLowerCase() : "";
   const Icon = ICON_MAP[firstTag] || ICON_MAP.default;
@@ -75,11 +92,190 @@ const cats = [
   { key: "automation", label: "Automation" },
 ];
 
+/** Lowercase “skill” text: tags + title + subtitle + description (for filter matching). */
+function projectSearchBlob(p) {
+  const pieces = [...(p.tags || []), p.title, p.subtitle, p.desc].filter(Boolean);
+  return pieces.join(" ").toLowerCase();
+}
+
+function normalizedTags(p) {
+  return (p.tags || []).map((t) => String(t).toLowerCase().trim()).filter(Boolean);
+}
+
+/** Any needle matches blob or a whole tag (handles "react" vs "react.js"). */
+function blobOrTagMatch(blob, tags, needles) {
+  return needles.some((needle) => {
+    const n = needle.toLowerCase();
+    if (blob.includes(n)) return true;
+    return tags.some((t) => t === n || t.includes(n) || n.includes(t));
+  });
+}
+
+/**
+ * Filter modes infer category from skills/tags/copy (not `featured` or first tag only).
+ */
+function projectMatchesCategory(filterKey, p) {
+  if (filterKey === "all") return true;
+  const blob = projectSearchBlob(p);
+  const tags = normalizedTags(p);
+
+  if (filterKey === "fullstack") {
+    if (/\bfull[\s-]?stack\b/i.test(blob)) return true;
+    const backendHints = [
+      "django",
+      "laravel",
+      "rails",
+      "spring",
+      "express",
+      "fastapi",
+      "flask",
+      "aspnet",
+      ".net",
+      "nodejs",
+      "node.js",
+      "node ",
+      "php",
+      "ruby",
+      "postgres",
+      "postgresql",
+      "mysql",
+      "mongodb",
+      "graphql",
+      "rest api",
+      "api",
+    ];
+    const frontendHints = [
+      "react",
+      "vue",
+      "angular",
+      "svelte",
+      "next.js",
+      "nextjs",
+      "nuxt",
+      "typescript",
+      "javascript",
+      "tailwind",
+      "vite",
+      "webpack",
+      "frontend",
+      "spa",
+    ];
+    const hasBack = blobOrTagMatch(blob, tags, backendHints);
+    const hasFront = blobOrTagMatch(blob, tags, frontendHints);
+    return hasBack && hasFront;
+  }
+
+  if (filterKey === "security") {
+    const hints = [
+      "security",
+      "cryptograph",
+      "cryptography",
+      "encryption",
+      "encrypt",
+      "zero knowledge",
+      "zero-knowledge",
+      "zk-",
+      " zk ",
+      "penetration",
+      "pentest",
+      "auth",
+      "oauth",
+      "jwt",
+      "ssl",
+      "tls",
+      "cipher",
+      "hashing",
+      "vulnerability",
+      "siem",
+      "compliance",
+      "owasp",
+      "hardening",
+      "forensic",
+      "malware",
+      "blockchain security",
+    ];
+    return blobOrTagMatch(blob, tags, hints);
+  }
+
+  if (filterKey === "systems") {
+    const hints = [
+      "systems",
+      "system design",
+      "kernel",
+      "embedded",
+      "low-level",
+      "networking",
+      "distributed systems",
+      "microservice",
+      "message queue",
+      "kafka",
+      "redis cluster",
+      "raft",
+      "consensus",
+      "c++",
+      "rust",
+      "operating system",
+      "file system",
+    ];
+    return blobOrTagMatch(blob, tags, hints);
+  }
+
+  if (filterKey === "devops") {
+    const hints = [
+      "devops",
+      "docker",
+      "kubernetes",
+      "k8s",
+      "terraform",
+      "ansible",
+      "cicd",
+      "ci/cd",
+      "jenkins",
+      "github action",
+      "gitlab",
+      "nginx",
+      "helm",
+      "prometheus",
+      "grafana",
+      "aws",
+      "gcp",
+      "azure",
+      "deploy",
+      "infrastructure",
+      "iac",
+    ];
+    return blobOrTagMatch(blob, tags, hints);
+  }
+
+  if (filterKey === "automation") {
+    const hints = [
+      "automation",
+      "automate",
+      "scripting",
+      "cron",
+      "scheduler",
+      "scraping",
+      "scrapy",
+      "selenium",
+      "puppeteer",
+      "n8n",
+      "zapier",
+      "workflow",
+      "rpa",
+      "bot",
+    ];
+    return blobOrTagMatch(blob, tags, hints);
+  }
+
+  return true;
+}
+
 function ProjectDetailPopup({ project, onClose }) {
   if (!project) return null;
   const Icon = project.icon;
-  const thumbs = project.galleryImages || [];
-  const features = project.featureHighlights || normalizeFeatureHighlights([]);
+  const thumbs = (project.galleryImages || []).filter((u) => String(u || "").trim());
+  const highlights = meaningfulHighlights(project);
+  const hasCover = !!(project.coverImage && String(project.coverImage).trim());
 
   const handleLiveClick = (e) => {
     e.stopPropagation();
@@ -108,7 +304,7 @@ function ProjectDetailPopup({ project, onClose }) {
         className="bg-paper border border-ink/15 shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-hidden flex flex-col"
       >
         <div className="relative flex-shrink-0 border-b border-ink/10">
-          {project.coverImage ? (
+          {hasCover ? (
             <div className="relative aspect-[21/9] min-h-[200px] max-h-[46vh] w-full overflow-hidden bg-ink/5">
               <img
                 src={project.coverImage}
@@ -121,15 +317,10 @@ function ProjectDetailPopup({ project, onClose }) {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-paper via-paper/20 to-transparent" />
             </div>
-          ) : (
-            <div
-              className="h-28 w-full opacity-90"
-              style={{
-                background: `linear-gradient(135deg, ${project.color}33 0%, transparent 70%), var(--paper, #faf8f5)`,
-              }}
-            />
-          )}
-          <div className="p-5 md:p-7 flex items-start justify-between gap-4">
+          ) : null}
+          <div
+            className={`p-5 md:p-7 flex items-start justify-between gap-4 ${!hasCover ? "pt-6" : ""}`}
+          >
             <div className="flex items-center gap-4 min-w-0">
               <div
                 className="w-12 h-12 flex items-center justify-center border shrink-0 bg-paper"
@@ -174,57 +365,77 @@ function ProjectDetailPopup({ project, onClose }) {
             </div>
           )}
 
-          <p className="text-sm text-ink/80 leading-relaxed">{project.desc}</p>
+          {project.desc ? (
+            <p className="text-sm text-ink/80 leading-relaxed">{project.desc}</p>
+          ) : null}
 
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-ink/40 mb-3">
-              Project highlights (3)
-            </p>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {features.map((f, i) => (
-                <div
-                  key={i}
-                  className="border border-ink/12 overflow-hidden flex flex-col bg-paper hover:border-ink/25 transition-colors"
-                >
-                  <div className="relative aspect-[16/10] bg-ink/5 shrink-0">
-                    {f.image ? (
-                      <img src={f.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    ) : (
-                      <div
-                        className="absolute inset-0 flex items-center justify-center opacity-40"
-                        style={{ background: `linear-gradient(160deg, ${project.color}44, transparent)` }}
-                      >
-                        <Icon className="w-8 h-8" style={{ color: project.color }} />
+          {highlights.length > 0 ? (
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-ink/40 mb-3">
+                Project highlights
+              </p>
+              <div
+                className={`grid gap-3 ${
+                  highlights.length === 1
+                    ? "grid-cols-1"
+                    : highlights.length === 2
+                      ? "sm:grid-cols-2"
+                      : "sm:grid-cols-3"
+                }`}
+              >
+                {highlights.map((f, i) => (
+                  <div
+                    key={i}
+                    className="border border-ink/12 overflow-hidden flex flex-col bg-paper hover:border-ink/25 transition-colors"
+                  >
+                    {f.image && String(f.image).trim() ? (
+                      <div className="relative aspect-[16/10] bg-ink/5 shrink-0">
+                        <img
+                          src={f.image}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                        <div
+                          className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity pointer-events-none"
+                          style={{ backgroundColor: project.color }}
+                        />
                       </div>
-                    )}
-                    <div
-                      className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity pointer-events-none"
-                      style={{ backgroundColor: project.color }}
-                    />
+                    ) : null}
+                    {(f.title &&
+                      !HIGHLIGHT_TITLE_PLACEHOLDER.test(String(f.title).trim())) ||
+                    (f.body && String(f.body).trim()) ? (
+                      <div className="p-3 flex-1 flex flex-col">
+                        {f.title &&
+                        !HIGHLIGHT_TITLE_PLACEHOLDER.test(String(f.title).trim()) ? (
+                          <h3 className="font-syne font-bold uppercase text-xs tracking-tight text-ink leading-tight">
+                            {f.title}
+                          </h3>
+                        ) : null}
+                        {f.body && String(f.body).trim() ? (
+                          <p className="font-mono text-[10px] text-ink/55 mt-2 leading-relaxed flex-1">
+                            {f.body}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="p-3 flex-1 flex flex-col">
-                    <h3 className="font-syne font-bold uppercase text-xs tracking-tight text-ink leading-tight">
-                      {f.title}
-                    </h3>
-                    <p className="font-mono text-[10px] text-ink/55 mt-2 leading-relaxed flex-1">
-                      {f.body || "—"}
-                    </p>
-                  </div>
-                </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {project.tags?.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {project.tags.map((t) => (
+                <span
+                  key={t}
+                  className="px-2.5 py-1 text-[11px] border border-ink/15 text-ink/60 font-mono"
+                >
+                  {t}
+                </span>
               ))}
             </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {project.tags.map((t) => (
-              <span
-                key={t}
-                className="px-2.5 py-1 text-[11px] border border-ink/15 text-ink/60 font-mono"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
+          ) : null}
           <div className="flex flex-wrap gap-3 pt-1">
             {project.liveUrl && (
               <a
@@ -260,7 +471,8 @@ function ProjectDetailPopup({ project, onClose }) {
   );
 }
 
-function FeaturedCard({ project, index, onSelect }) {
+/** Featured tile: only shown when filter is “All”. Same visual height per row (`h-44` media strip). */
+function FeaturedCard({ project, index, onSelect, className = "" }) {
   const [hovered, setHovered] = useState(false);
   const Icon = project.icon;
 
@@ -278,41 +490,55 @@ function FeaturedCard({ project, index, onSelect }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={handleClick}
-      className="border border-ink/10 relative overflow-hidden group cursor-pointer flex flex-col"
+      className={`border border-ink/10 relative overflow-hidden group cursor-pointer flex flex-col h-full min-h-0 bg-paper ${className}`}
       data-cursor
     >
-      {project.coverImage ? (
-        <div className="relative h-44 w-full overflow-hidden shrink-0 border-b border-ink/10">
-          <img
-            src={project.coverImage}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          />
-          <div
-            className="absolute inset-0 opacity-30 mix-blend-multiply"
-            style={{ backgroundColor: project.color }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-paper via-paper/30 to-transparent" />
-        </div>
-      ) : null}
-      {/* Animated fill */}
+      <div className="relative h-44 w-full overflow-hidden shrink-0 border-b border-ink/10">
+        {project.coverImage ? (
+          <>
+            <img
+              src={project.coverImage}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            />
+            <div
+              className="absolute inset-0 opacity-30 mix-blend-multiply pointer-events-none"
+              style={{ backgroundColor: project.color }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-paper via-paper/30 to-transparent pointer-events-none" />
+          </>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-ink/[0.04]">
+            <div
+              className="w-11 h-11 flex items-center justify-center border bg-paper"
+              style={{ borderColor: project.color, color: project.color }}
+            >
+              <Icon className="w-5 h-5" />
+            </div>
+          </div>
+        )}
+      </div>
+
       <motion.div
         animate={{ scaleY: hovered ? 1 : 0 }}
         initial={{ scaleY: 0 }}
         style={{ originY: 1, background: project.color }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="absolute inset-0 opacity-[0.08] pointer-events-none"
+        className="absolute left-0 right-0 bottom-0 top-44 opacity-[0.08] pointer-events-none"
       />
 
-      <div className="p-7 flex flex-col h-full relative flex-1">
-        {/* Top row */}
-        <div className="flex items-start justify-between mb-6">
-          <div
-            className="w-11 h-11 flex items-center justify-center border"
-            style={{ borderColor: project.color, color: project.color }}
-          >
-            <Icon className="w-5 h-5" />
-          </div>
+      <div className="p-7 flex flex-col flex-1 min-h-0">
+        <div className="flex items-start justify-between mb-4 shrink-0">
+          {project.coverImage ? (
+            <div
+              className="w-11 h-11 flex items-center justify-center border bg-paper shrink-0"
+              style={{ borderColor: project.color, color: project.color }}
+            >
+              <Icon className="w-5 h-5" />
+            </div>
+          ) : (
+            <div className="w-11 shrink-0" aria-hidden />
+          )}
           <div className="flex items-center gap-3">
             <span className="font-mono text-[10px] uppercase tracking-widest text-ink/30">
               {project.year}
@@ -329,14 +555,13 @@ function FeaturedCard({ project, index, onSelect }) {
           </div>
         </div>
 
-        {/* Title */}
-        <div className="mb-1">
+        <div className="mb-1 shrink-0">
           <span className="font-mono text-[10px] text-ink/30 uppercase tracking-widest">
             {project.num}
           </span>
         </div>
         <h3
-          className="font-syne font-bold uppercase tracking-tight leading-tight mb-1 transition-colors duration-300"
+          className="font-syne font-bold uppercase tracking-tight leading-tight mb-1 transition-colors duration-300 shrink-0"
           style={{
             fontSize: "clamp(1.1rem, 2.5vw, 1.6rem)",
             color: hovered ? project.color : "inherit",
@@ -345,17 +570,16 @@ function FeaturedCard({ project, index, onSelect }) {
           {project.title}
         </h3>
         {project.subtitle && (
-          <p className="font-mono text-[11px] text-ink/40 uppercase tracking-wider mb-4">
+          <p className="font-mono text-[11px] text-ink/40 uppercase tracking-wider mb-3 shrink-0">
             {project.subtitle}
           </p>
         )}
 
-        <p className="text-sm text-ink/60 leading-relaxed flex-1 mb-6">
+        <p className="text-sm text-ink/60 leading-relaxed flex-1 min-h-[5rem] line-clamp-5 mb-6">
           {project.desc}
         </p>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mt-auto shrink-0">
           {project.tags.map((t) => (
             <span
               key={t}
@@ -491,10 +715,30 @@ export default function Projects() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered =
-    active === "all" ? projects : projects.filter((p) => p.cat === active);
-  const featured = filtered.filter((p) => p.featured);
-  const rest = filtered.filter((p) => !p.featured);
+  const { featuredFiltered, rowFiltered, filteredCount } = useMemo(() => {
+    const list = projects.filter((p) => projectMatchesCategory(active, p));
+    if (active === "all") {
+      const feat = list
+        .filter((p) => p.featured)
+        .map((p, i) => ({ ...p, num: String(i + 1).padStart(2, "0") }));
+      const rest = list
+        .filter((p) => !p.featured)
+        .map((p, i) => ({ ...p, num: String(i + 1).padStart(2, "0") }));
+      return {
+        featuredFiltered: feat,
+        rowFiltered: rest,
+        filteredCount: list.length,
+      };
+    }
+    return {
+      featuredFiltered: [],
+      rowFiltered: list.map((p, i) => ({
+        ...p,
+        num: String(i + 1).padStart(2, "0"),
+      })),
+      filteredCount: list.length,
+    };
+  }, [projects, active]);
 
   useEffect(() => {
     if (!moreSectionRef.current || scrollTrackedRef.current) return;
@@ -510,7 +754,7 @@ export default function Projects() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [featured.length, rest.length]);
+  }, [filteredCount, rowFiltered.length]);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -566,8 +810,9 @@ export default function Projects() {
             transition={{ delay: 0.5 }}
             className="text-sm text-ink/50 max-w-xl mb-10"
           >
-            8 projects spanning security systems, SaaS platforms, DevOps
-            infrastructure, and automation tools.
+            {loading
+              ? "Loading…"
+              : `${projects.length} project${projects.length === 1 ? "" : "s"} — filter by stack, security, systems, DevOps, or automation.`}
           </motion.p>
         </div>
       </section>
@@ -594,7 +839,7 @@ export default function Projects() {
             </button>
           ))}
           <span className="ml-auto font-mono text-xs text-ink/30">
-            {filtered.length} projects
+            {filteredCount} projects
           </span>
         </div>
       </div>
@@ -607,42 +852,64 @@ export default function Projects() {
           </div>
         ) : projects.length === 0 ? (
           <p className="text-center text-ink/50 font-mono text-sm py-24">No projects yet. Add some from the owner dashboard.</p>
+        ) : filteredCount === 0 ? (
+          <p className="text-center text-ink/50 font-mono text-sm py-24" ref={moreSectionRef}>
+            No projects match this filter. Try &ldquo;All&rdquo; or another category.
+          </p>
         ) : (
         <AnimatePresence mode="wait">
           <motion.div
-            key={active}
+            key={active+(featuredFiltered.length ? "_feat" : "")}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            {/* Featured grid */}
-            {featured.length > 0 && (
+            {active === "all" && featuredFiltered.length > 0 ? (
               <>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-6">
                   Featured
                 </p>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-ink/10 mb-12">
-                  {featured.map((p, i) => (
-                    <div key={p.id ?? p.num ?? p.title} className="bg-paper">
-                      <FeaturedCard project={p} index={i} onSelect={setSelectedProject} />
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-ink/10 mb-12 items-stretch">
+                  {featuredFiltered.map((p, i) => (
+                    <div
+                      key={p.id ?? `feat-${p.title}-${i}`}
+                      className="bg-paper flex min-h-[min(28rem,70vh)]"
+                    >
+                      <FeaturedCard
+                        project={p}
+                        index={i}
+                        onSelect={setSelectedProject}
+                        className="flex-1 w-full"
+                      />
                     </div>
                   ))}
                 </div>
               </>
-            )}
+            ) : null}
 
-            {/* Rest as rows */}
-            {rest.length > 0 && (
+            {rowFiltered.length > 0 ? (
               <>
-                <p ref={moreSectionRef} className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-2">
-                  More Projects
+                <p
+                  ref={moreSectionRef}
+                  className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-4"
+                >
+                  {active === "all" && featuredFiltered.length > 0
+                    ? "More projects"
+                    : active === "all"
+                      ? "All projects"
+                      : (cats.find((c) => c.key === active)?.label ?? active)}
                 </p>
-                {rest.map((p, i) => (
-                  <ProjectRow key={p.id ?? p.num ?? p.title} project={p} index={i} onSelect={setSelectedProject} />
+                {rowFiltered.map((p, i) => (
+                  <ProjectRow
+                    key={p.id ?? `${p.title}-row-${i}`}
+                    project={p}
+                    index={i}
+                    onSelect={setSelectedProject}
+                  />
                 ))}
               </>
-            )}
+            ) : null}
           </motion.div>
         </AnimatePresence>
         )}
