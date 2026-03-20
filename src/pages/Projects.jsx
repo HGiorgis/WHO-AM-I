@@ -14,6 +14,7 @@ import {
 import MarqueeBand from "../components/layout/MarqueeBand";
 import { fetchProjects } from "@/api/portfolioApi";
 import { trackEvent } from "@/api/trackApi";
+import SquareFlowLoader from "@/components/ui/SquareFlowLoader";
 
 const ICON_MAP = {
   django: ShieldCheck,
@@ -483,8 +484,9 @@ export default function Projects() {
 
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-12">
         {loading ? (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 border-2 border-ink/20 border-t-ink rounded-full animate-spin" />
+          <div className="flex flex-col items-center justify-center gap-4 py-24">
+            <SquareFlowLoader size="lg" />
+            <span className="font-mono text-xs text-ink/40">Loading projects…</span>
           </div>
         ) : projects.length === 0 ? (
           <p className="text-center text-ink/50 font-mono text-sm py-24">No projects yet. Add some from the owner dashboard.</p>

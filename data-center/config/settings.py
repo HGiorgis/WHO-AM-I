@@ -1,5 +1,6 @@
 import sys
 import os
+import importlib.util
 from pathlib import Path
 
 # Load .env so os.environ.get() below sees your variables. Put .env in data-center/ or in cwd.
@@ -68,9 +69,18 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
+_WHITENOISE_INSTALLED = importlib.util.find_spec("whitenoise") is not None
+if not DEBUG and not _WHITENOISE_INSTALLED:
+    raise ImproperlyConfigured(
+        "Install whitenoise for production: pip install whitenoise (or pip install -r requirements.txt)"
+    )
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+]
+if _WHITENOISE_INSTALLED:
+    MIDDLEWARE.append('whitenoise.middleware.WhiteNoiseMiddleware')
+MIDDLEWARE.extend([
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -78,7 +88,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
+])
 
 ROOT_URLCONF = 'config.urls'
 

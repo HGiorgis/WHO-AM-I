@@ -14,6 +14,7 @@ import {
   Cpu,
 } from "lucide-react";
 import SiteMark from "@/components/brand/SiteMark";
+import SquareFlowLoader from "@/components/ui/SquareFlowLoader";
 import MarqueeBand from "../components/layout/MarqueeBand";
 import ProcessSection from "../components/home/ProcessSection";
 import TestimonialsSection from "../components/home/TestimonialsSection";
@@ -508,8 +509,9 @@ export default function Home() {
       <Hero />
       <MarqueeBand />
       {loading ? (
-        <section className="border-t border-ink/10 py-20 flex justify-center">
-          <span className="font-mono text-xs text-ink/40">Loading…</span>
+        <section className="border-t border-ink/10 py-20 flex flex-col items-center justify-center gap-4">
+          <SquareFlowLoader size="md" />
+          <span className="font-mono text-xs text-ink/40">Loading panels…</span>
         </section>
       ) : (
         <>

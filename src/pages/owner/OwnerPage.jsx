@@ -1,6 +1,7 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import { useOwner } from "@/lib/OwnerContext";
+import SquareFlowLoader from "@/components/ui/SquareFlowLoader";
 import OwnerKeyGate from "./OwnerKeyGate";
 
 export default function OwnerPage() {
@@ -8,8 +9,11 @@ export default function OwnerPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-paper flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-ink/20 border-t-ink rounded-full animate-spin" />
+      <div className="min-h-screen bg-paper flex flex-col items-center justify-center gap-4">
+        <SquareFlowLoader size="lg" />
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink/40">
+          Loading
+        </span>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Plus, Trash2, Save, Loader2 } from "lucide-react";
+import SquareFlowLoader from "@/components/ui/SquareFlowLoader";
 import { getOwnerContent, patchOwnerContent } from "@/api/ownerApi";
 
 const TABS = [
@@ -191,9 +192,9 @@ export default function OwnerProfile() {
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-3 text-ink/50 font-mono text-sm py-16">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Loading…
+          <div className="flex flex-col items-center justify-center gap-4 text-ink/50 font-mono text-sm py-16">
+            <SquareFlowLoader size="md" />
+            <span>Loading content…</span>
           </div>
         ) : (
           <>

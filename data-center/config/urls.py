@@ -22,6 +22,11 @@ from . import views as config_views
 urlpatterns = [
     path("api/", include("api.urls")),
     path("admin/", admin.site.urls),
+    # Must be before catch-all SPA or /favicon.svg / manifest.json return HTML
+    re_path(
+        r"^(?P<name>favicon\.svg|manifest\.json|robots\.txt)$",
+        config_views.serve_frontend_root,
+    ),
     path("assets/<path:path>", config_views.serve_frontend_asset),
     re_path(r"^.*$", config_views.serve_spa_index),
 ]

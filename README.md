@@ -63,6 +63,8 @@ See **[DEPLOY.md](./DEPLOY.md)** for more detail (Render blueprint, persistent d
 | `TELEGRAM_BOT_TOKEN` | Django | Optional; Telegram notifications. |
 | `TELEGRAM_CHAT_ID` | Django | Optional; Telegram chat/group. |
 | `SITE_URL` | Django | Optional; public URL (e.g. for Telegram links). |
+| `DEBUG` | Django | `true` → SQLite. `false` → **PostgreSQL** via `DATABASE_URL` (required). On Render, `RENDER=true` implies debug off unless you set `DEBUG=true`. |
+| `DATABASE_URL` | Django | Postgres connection string (e.g. [Neon](https://neon.tech)). **Required** when `DEBUG=false`. |
 
 Copy `.env.example` to `.env` and fill as needed.
 

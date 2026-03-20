@@ -18,6 +18,24 @@ def serve_spa_index(request):
         return HttpResponse(f.read(), content_type="text/html")
 
 
+def serve_frontend_root(request, name):
+    """Serve root-level static files from the Vite build (favicon, manifest). Catches these before SPA fallback."""
+    if name not in ("favicon.svg", "manifest.json", "robots.txt"):
+        raise Http404()
+    file_path = (settings.FRONTEND_DIST / name).resolve()
+    if (
+        not file_path.is_file()
+        or not str(file_path).startswith(str(settings.FRONTEND_DIST.resolve()))
+    ):
+        raise Http404()
+    content_type, _ = mimetypes.guess_type(str(file_path))
+    with open(file_path, "rb") as f:
+        return HttpResponse(
+            f.read(),
+            content_type=content_type or "application/octet-stream",
+        )
+
+
 def serve_frontend_asset(request, path):
     """Serve a file from frontend_dist/assets/<path> (JS, CSS, etc.)."""
     assets_dir = settings.FRONTEND_DIST / "assets"

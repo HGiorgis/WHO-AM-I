@@ -22,6 +22,7 @@ import {
   deleteProject,
   getOwnerMessages,
 } from "@/api/ownerApi";
+import SquareFlowLoader from "@/components/ui/SquareFlowLoader";
 
 const PERIODS = [
   { value: "day", label: "Day" },
@@ -319,8 +320,9 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
           </div>
           <div className="divide-y divide-ink/10">
             {loading ? (
-              <div className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-                Loading…
+              <div className="px-6 py-12 flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
+                <SquareFlowLoader size="sm" />
+                <span>Loading…</span>
               </div>
             ) : byPage.length > 0 ? (
               byPage.map((row, i) => (
@@ -374,8 +376,11 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-                      Loading…
+                    <td colSpan={4} className="px-6 py-12">
+                      <div className="flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
+                        <SquareFlowLoader size="sm" />
+                        <span>Loading…</span>
+                      </div>
                     </td>
                   </tr>
                 ) : visitorsPaginated.length > 0 ? (
@@ -445,8 +450,11 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-                      Loading…
+                    <td colSpan={3} className="px-6 py-12">
+                      <div className="flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
+                        <SquareFlowLoader size="sm" />
+                        <span>Loading…</span>
+                      </div>
                     </td>
                   </tr>
                 ) : eventsPaginated.length > 0 ? (
@@ -506,8 +514,9 @@ function MessagesSection({ messages, loading }) {
       <div className="border border-ink/10">
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="px-6 py-16 text-center text-ink/50 font-mono text-sm flex items-center justify-center gap-2">
-              <span className="animate-pulse">Loading…</span>
+            <div className="px-6 py-16 flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
+              <SquareFlowLoader size="sm" />
+              <span>Loading messages…</span>
             </div>
           ) : messages.length === 0 ? (
             <div className="px-6 py-16 text-center text-ink/50 font-mono text-sm">
@@ -674,8 +683,9 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
         </div>
         <div className="divide-y divide-ink/10">
           {loading ? (
-            <div className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
-              Loading…
+            <div className="px-6 py-12 flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
+              <SquareFlowLoader size="sm" />
+              <span>Loading…</span>
             </div>
           ) : projects.length === 0 ? (
             <div className="px-6 py-12 text-center text-ink/50 font-mono text-sm">

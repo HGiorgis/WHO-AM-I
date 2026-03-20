@@ -5,7 +5,7 @@ One repo, one Docker image: Vite/React frontend + Django API. Same env for both.
 ## Troubleshooting Render
 
 - **Exited with status 128** — often the container had no valid start command. This repo uses `CMD ["/bin/sh", "/app/scripts/run.sh"]`; ensure your `Dockerfile` matches if you customized it.
-- If deploy still fails, check logs for `migrate` or `gunicorn` errors (e.g. missing env `SECRET_KEY`).
+- If deploy still fails, check logs for `migrate` or `gunicorn` errors (e.g. missing `SECRET_KEY` or **`DATABASE_URL`** when `DEBUG` is off).
 
 ## Quick start (local Docker)
 
@@ -32,8 +32,10 @@ Optional: copy `.env.example` to `.env` and run with `--env-file .env`.
 4. Add **Environment Variables** (or use the blueprint):
    - `SECRET_KEY` — generate or set a long random string.
    - `OWNER_KEY` — your secret for the owner dashboard (you choose).
+   - **`DATABASE_URL`** — Postgres connection string from [Neon](https://neon.tech) (or Render Postgres). **Required**: on Render, `DEBUG` defaults to off, so Django uses Postgres only when `DATABASE_URL` is set.
    - Optional: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SITE_URL` (e.g. `https://whoami-xxxx.onrender.com`).
-5. Deploy. Render sets `PORT` and `RENDER=true` automatically.
+   - Optional: `DEBUG=true` for debugging only (uses SQLite; not for production).
+5. Deploy. Render sets `PORT` and `RENDER=true` automatically. Migrations run on container start (`run.sh`).
 
 After deploy, set **SITE_URL** to your service URL (e.g. `https://whoami-xxxx.onrender.com`) so Telegram links and CORS work.
 
@@ -48,4 +50,6 @@ If your repo has `render.yaml`, you can use **Blueprint** when connecting the re
 
 ## Database
 
-The default is SQLite (`db.sqlite3`). On Render the filesystem is ephemeral unless you add a [Persistent Disk](https://render.com/docs/disks); for a persistent DB, attach a disk and set `DATABASE` / use PostgreSQL (would require switching Django to Postgres and adding a DB in Render).
+- **`DEBUG=true` (local dev):** SQLite at `data-center/db.sqlite3`.
+- **`DEBUG=false` (production / Render):** PostgreSQL via **`DATABASE_URL`** (`dj-database-url` + `psycopg2-binary`). Use Neon’s connection string; include `sslmode=require` if Neon shows it. Example:  
+  `postgresql://user:pass@ep-xxx.region.aws.neon.tech/neondb?sslmode=require`
