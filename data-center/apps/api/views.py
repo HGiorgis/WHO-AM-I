@@ -870,32 +870,21 @@ def _format_site_pulse_plain():
     return "\n".join(lines)
 
 
-def _telegram_more_keyboard():
-    """Inline actions under /more reply."""
-    return {
-        "inline_keyboard": [
-            [{"text": "Mark latest contact read", "callback_data": "inbox_read_latest"}],
-            [{"text": "Mark all unread contact read", "callback_data": "inbox_read_all"}],
-        ]
-    }
-
-
 @csrf_exempt
 @require_http_methods(["POST"])
 def telegram_webhook(request):
     """
-    POST /api/telegram/webhook — receives Telegram updates. Set webhook:
-    https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_BASE>/api/telegram/webhook
-    Handles: /more (plain text + inbox actions), /visitors, /help, inline mark-read.
+    POST /api/telegram/webhook — Telegram updates (set TELEGRAM_WEBHOOK_PUBLIC_URL; Django syncs on start).
+    Commands: /more, /visitors, /help. Inline: mark this contact read, mark all read.
     """
     import json
     from django.core.cache import cache
     from .telegram_notify import (
         send_telegram_message,
         answer_telegram_callback_query,
+        telegram_inbox_inline_keyboard,
         TELEGRAM_LAST_VISITOR_CACHE_KEY,
         TELEGRAM_LAST_CONTACT_ID_KEY,
-        _escape_html,
         _country_flag_emoji,
     )
 
@@ -911,7 +900,7 @@ def telegram_webhook(request):
         chat = (cb.get("message") or {}).get("chat") or {}
         chat_id = chat.get("id")
         raw_data = str(cb.get("data") or "")[:64]
-        answer_telegram_callback_query(cq_id, text="Updated.")
+        answer_telegram_callback_query(cq_id, text="Done.")
         if chat_id and raw_data == "inbox_read_all":
             n = ContactMessage.objects.filter(read=False).update(read=True)
             send_telegram_message(
@@ -919,6 +908,23 @@ def telegram_webhook(request):
                 parse_mode=None,
                 chat_id=chat_id,
             )
+        elif chat_id and raw_data.startswith("inbox_one:"):
+            try:
+                pk = int(raw_data.split(":", 1)[1])
+                upd = ContactMessage.objects.filter(pk=pk, read=False).update(read=True)
+                send_telegram_message(
+                    "This contact message marked as read."
+                    if upd
+                    else "That message was already read.",
+                    parse_mode=None,
+                    chat_id=chat_id,
+                )
+            except (ValueError, IndexError):
+                send_telegram_message(
+                    "Could not mark message (invalid id).",
+                    parse_mode=None,
+                    chat_id=chat_id,
+                )
         elif chat_id and raw_data == "inbox_read_latest":
             pk = cache.get(TELEGRAM_LAST_CONTACT_ID_KEY)
             if pk:
@@ -972,7 +978,7 @@ def telegram_webhook(request):
                     body,
                     parse_mode=None,
                     chat_id=chat_id,
-                    reply_markup=_telegram_more_keyboard(),
+                    reply_markup=telegram_inbox_inline_keyboard(),
                 )
             except VisitorSession.DoesNotExist:
                 send_telegram_message(
@@ -985,7 +991,7 @@ def telegram_webhook(request):
                 "No visitor sessions in the database yet.\n\n" + _format_site_pulse_plain(),
                 parse_mode=None,
                 chat_id=chat_id,
-                reply_markup=_telegram_more_keyboard(),
+                reply_markup=telegram_inbox_inline_keyboard(),
             )
         return JsonResponse({"ok": True})
 
@@ -1007,7 +1013,7 @@ def telegram_webhook(request):
         help_text = (
             "PORTFOLIO BOT\n"
             "============\n"
-            "/more     — live pulse + last visitor detail (plain text) + mark-read buttons\n"
+            "/more — site pulse + visitor detail + inbox buttons (mark read / mark all)\n"
             "/visitors — last 5 visitors\n"
             "/help     — this help\n"
         )

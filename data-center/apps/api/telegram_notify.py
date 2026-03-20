@@ -15,6 +15,51 @@ TELEGRAM_LAST_CONTACT_ID_KEY = "telegram_last_contact_message_id"
 TELEGRAM_LAST_CONTACT_ID_TTL = 86400
 
 
+def telegram_inbox_inline_keyboard():
+    """Under /more: mark latest notified contact (cache) + mark all."""
+    return {
+        "inline_keyboard": [
+            [{"text": "✓ Mark latest contact read", "callback_data": "inbox_read_latest"}],
+            [{"text": "✓ Mark all inbox read", "callback_data": "inbox_read_all"}],
+        ]
+    }
+
+
+def telegram_contact_inline_keyboard(contact_message_id: int):
+    """Per contact notification: mark this DB row + mark all (callback_data max 64 bytes)."""
+    cid = int(contact_message_id)
+    one = f"inbox_one:{cid}"
+    if len(one) > 64:
+        one = "inbox_read_latest"
+    return {
+        "inline_keyboard": [
+            [{"text": "✓ Mark this message read", "callback_data": one}],
+            [{"text": "✓ Mark all inbox read", "callback_data": "inbox_read_all"}],
+        ]
+    }
+
+
+def register_telegram_webhook(webhook_url: str) -> bool:
+    """Call Telegram setWebhook. Returns True if API reports ok."""
+    token = getattr(settings, "TELEGRAM_BOT_TOKEN", "") or ""
+    url = (webhook_url or "").strip()
+    if not token or not url:
+        return False
+    try:
+        body = json.dumps({"url": url}).encode("utf-8")
+        req = urllib.request.Request(
+            f"https://api.telegram.org/bot{token}/setWebhook",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        return bool(data.get("ok"))
+    except Exception:
+        return False
+
+
 def _escape_html(s):
     if not s:
         return ""
@@ -80,44 +125,45 @@ def answer_telegram_callback_query(callback_query_id, text=None, show_alert=Fals
 
 
 def notify_contact_message(name, email, message, contact_message_id=None):
-    """Send a clean contact form notification using Telegram HTML (bold + link only).
-    contact_message_id: DB pk so /more or inline buttons can mark it read."""
-    name = _escape_html(name).strip() or "—"
-    email = _escape_html(email).strip() or "—"
-    msg_body = _escape_html(message).strip() or "—"
-
-    site_url = getattr(settings, "SITE_URL", "") or ""
-    site_label = "Open dashboard"
-    if site_url:
-        try:
-            from urllib.parse import urlparse
-            parsed = urlparse(site_url)
-            netloc = parsed.netloc or parsed.path
-            if netloc.startswith("www."):
-                netloc = netloc[4:]
-            site_label = netloc or "Dashboard"
-        except Exception:
-            pass
-
-    parts = [
-        "<b>New contact message</b>",
-        "",
-        f" <b>— Name:</b> {name}",
-        f" <b>— Email:</b> {email}",
-        "",
-        f"<b>Message:</b>\n{msg_body}",
-    ]
-    if site_url:
-        parts.append("")
-        parts.append(f'—  <a href="{site_url}/owner">{site_label}</a>')
-
-    text = "\n".join(parts)
-    send_telegram_message(text)
+    """Short contact alert + mark-read buttons (HTML). Caches message id before send for callbacks."""
     if contact_message_id is not None:
         try:
             cache.set(TELEGRAM_LAST_CONTACT_ID_KEY, int(contact_message_id), TELEGRAM_LAST_CONTACT_ID_TTL)
         except (TypeError, ValueError):
             pass
+
+    name = _escape_html(name).strip() or "—"
+    email = _escape_html(email).strip() or "—"
+    raw_msg = (message or "").strip().replace("\r\n", "\n").replace("\n", " ")
+    preview = _escape_html(raw_msg[:220] + ("…" if len(raw_msg) > 220 else "")) or "—"
+
+    site_url = getattr(settings, "SITE_URL", "") or ""
+    site_link = ""
+    if site_url:
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(site_url)
+            netloc = (parsed.netloc or parsed.path or "").lstrip("/")
+            if netloc.startswith("www."):
+                netloc = netloc[4:]
+            label = _escape_html(netloc or "Dashboard")
+            site_link = f'\n— <a href="{site_url.rstrip("/")}/owner">{label}</a>'
+        except Exception:
+            site_link = ""
+
+    text = (
+        "<b>📩 New contact</b>\n"
+        f"👤 {name} · ✉️ {email}\n"
+        f"📝 {preview}"
+        f"{site_link}",
+    )
+    markup = (
+        telegram_contact_inline_keyboard(int(contact_message_id))
+        if contact_message_id is not None
+        else telegram_inbox_inline_keyboard()
+    )
+    send_telegram_message(text, reply_markup=markup)
 
 
 def _country_flag_emoji(code):

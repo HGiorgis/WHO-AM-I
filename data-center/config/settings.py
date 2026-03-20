@@ -198,6 +198,11 @@ OWNER_KEY = os.environ.get("OWNER_KEY", "2026KEY")
 # Get chat_id by messaging your bot then GET https://api.telegram.org/bot<TOKEN>/getUpdates
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "use-ur-key-dont-ask-me")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+# Full HTTPS URL Telegram should POST to (path must include /api/telegram/webhook). On startup Django
+# calls setWebhook when TELEGRAM_SYNC_WEBHOOK is not "0". Example:
+#   TELEGRAM_WEBHOOK_PUBLIC_URL=https://hgiorgis.onrender.com/api/telegram/webhook
+TELEGRAM_WEBHOOK_PUBLIC_URL = os.environ.get("TELEGRAM_WEBHOOK_PUBLIC_URL", "").strip()
+TELEGRAM_SYNC_WEBHOOK = os.environ.get("TELEGRAM_SYNC_WEBHOOK", "1").strip().lower() not in ("0", "false", "no", "off")
 # Optional: public site URL for "Open dashboard" link in Telegram (e.g. https://yoursite.com)
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
 
