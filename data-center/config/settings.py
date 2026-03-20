@@ -200,7 +200,24 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "use-ur-key-dont-ask-m
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
 # Optional: public site URL for "Open dashboard" link in Telegram (e.g. https://yoursite.com)
 SITE_URL = os.environ.get("SITE_URL", "").rstrip("/")
-CSRF_TRUSTED_ORIGINS = [SITE_URL] if SITE_URL else []
+
+# Cross-origin PATCH/POST from SPA dev server (Vite on :5173) sends Origin; Django 4+ validates it.
+_extra_csrf = os.environ.get("CSRF_TRUSTED_ORIGINS", "").strip()
+CSRF_TRUSTED_ORIGINS = []
+if _extra_csrf:
+    CSRF_TRUSTED_ORIGINS.extend(h.strip() for h in _extra_csrf.split(",") if h.strip())
+if SITE_URL:
+    CSRF_TRUSTED_ORIGINS.append(SITE_URL)
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend(
+        [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:4173",
+            "http://127.0.0.1:4173",
+        ]
+    )
+CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(o for o in CSRF_TRUSTED_ORIGINS if o))
 
 # In-memory cache (used e.g. for Telegram "last visitor" so /more works)
 CACHES = {

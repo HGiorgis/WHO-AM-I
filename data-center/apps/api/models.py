@@ -10,6 +10,11 @@ class Project(models.Model):
     tags = models.JSONField(default=list)  # ["Laravel", "React", ...]
     live_url = models.URLField(max_length=500, blank=True)
     github_url = models.URLField(max_length=500, blank=True)
+    # Main hero + up to 2 extra thumbnails (URLs) for portfolio popup
+    cover_image = models.URLField(max_length=500, blank=True)
+    gallery_images = models.JSONField(default=list)  # e.g. ["https://...", "https://..."]
+    # Three spotlight cards: [{"title":"","body":"","image":""}, ...]
+    feature_highlights = models.JSONField(default=list)
     featured = models.BooleanField(default=False)
     color = models.CharField(max_length=20, default="#0f0f0f")
     order = models.PositiveIntegerField(default=0)
@@ -28,6 +33,17 @@ class VisitorSession(models.Model):
     session_id = models.CharField(max_length=64, unique=True, db_index=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     country_code = models.CharField(max_length=4, blank=True)  # e.g. US, GR
+    # Client / traffic context (best-effort; no sensitive payloads)
+    user_agent = models.CharField(max_length=512, blank=True)
+    device_type = models.CharField(max_length=32, blank=True)  # desktop, mobile, tablet
+    browser = models.CharField(max_length=64, blank=True)
+    os = models.CharField(max_length=64, blank=True)
+    referrer = models.CharField(max_length=2048, blank=True)
+    landing_path = models.CharField(max_length=500, blank=True)
+    utm_source = models.CharField(max_length=128, blank=True)
+    utm_medium = models.CharField(max_length=128, blank=True)
+    utm_campaign = models.CharField(max_length=128, blank=True)
+    traffic_type = models.CharField(max_length=32, blank=True)  # direct, referral, organic, social
     started_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(auto_now=True)
 
@@ -66,6 +82,7 @@ class PageView(models.Model):
     started_at = models.DateTimeField(auto_now_add=True)
     left_at = models.DateTimeField(null=True, blank=True)  # set when they leave
     duration_seconds = models.PositiveIntegerField(null=True, blank=True)
+    max_scroll_percent = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ["-started_at"]
@@ -79,6 +96,7 @@ class VisitorEvent(models.Model):
     event_type = models.CharField(max_length=32, default="click")  # click, view, etc.
     path = models.CharField(max_length=500, blank=True)
     target = models.CharField(max_length=500, blank=True)  # e.g. #contact, button id
+    meta = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -59,6 +59,28 @@ PROJECTS = [
         "featured": True,
         "color": "#e84040",
         "order": 1,
+        "cover_image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1600&q=80",
+        "gallery_images": [
+            "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=800&q=80",
+            "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb?auto=format&fit=crop&w=800&q=80",
+        ],
+        "feature_highlights": [
+            {
+                "title": "Compliance-ready",
+                "body": "Document verification pipeline built for audit trails and secure storage.",
+                "image": "https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "title": "Scalable APIs",
+                "body": "Async workers and queues for high-throughput identity checks.",
+                "image": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "title": "Privacy first",
+                "body": "Minimal PII retention with encryption in transit and at rest.",
+                "image": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80",
+            },
+        ],
     },
     {
         "title": "LinkFlow",
@@ -71,6 +93,28 @@ PROJECTS = [
         "featured": True,
         "color": "#f5c842",
         "order": 2,
+        "cover_image": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1600&q=80",
+        "gallery_images": [
+            "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80",
+            "https://images.unsplash.com/photo-1551434678-e076c223a692?auto=format&fit=crop&w=800&q=80",
+        ],
+        "feature_highlights": [
+            {
+                "title": "Redirect engine",
+                "body": "Fast edge-friendly redirects with full click and conversion signals.",
+                "image": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "title": "Pixel hub",
+                "body": "Central place to orchestrate marketing tags without slowing pages.",
+                "image": "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "title": "Laravel core",
+                "body": "Solid PHP backend with queues, cache, and Postgres.",
+                "image": "https://images.unsplash.com/photo-1537432376779-00d5cdb45746?auto=format&fit=crop&w=600&q=80",
+            },
+        ],
     },
     {
         "title": "Subscription Showcase",
@@ -83,6 +127,28 @@ PROJECTS = [
         "featured": True,
         "color": "#4fa3e0",
         "order": 3,
+        "cover_image": "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1600&q=80",
+        "gallery_images": [
+            "https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=800&q=80",
+            "https://images.unsplash.com/photo-1563986768494-4cdf02b2e593?auto=format&fit=crop&w=800&q=80",
+        ],
+        "feature_highlights": [
+            {
+                "title": "Subscriptions",
+                "body": "Stripe-powered billing with trials, proration, and webhooks.",
+                "image": "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "title": "Multi-tenant",
+                "body": "Isolated workspaces and roles for teams and customers.",
+                "image": "https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=600&q=80",
+            },
+            {
+                "title": "Dockerized",
+                "body": "Repeatable deploys with containers and env-based config.",
+                "image": "https://images.unsplash.com/photo-1605745341112-85968b19335b?auto=format&fit=crop&w=600&q=80",
+            },
+        ],
     },
     {
         "title": "Sankrypt",
@@ -151,9 +217,33 @@ PROJECTS = [
 
 HOME_PANELS = {
     "panels": [
-        {"num": "01", "tag": "BACKEND", "title": ["SAAS", "ARCHITECT"], "sub": "Building subscription platforms, user management systems, and scalable backend APIs with Laravel & Django.", "accent": "#e84040", "shape": "circle"},
-        {"num": "02", "tag": "SECURITY", "title": ["ZERO-KNOWLEDGE", "SYSTEMS"], "sub": "Designing end-to-end encrypted vaults, KYC verification services, and client-side crypto applications.", "accent": "#f5c842", "shape": "square"},
-        {"num": "03", "tag": "DEVOPS", "title": ["HIGH-AVAILABILITY", "INFRA"], "sub": "Deploying containerized systems with CI/CD pipelines, Nginx load balancing, and cloud infrastructure.", "accent": "#4fa3e0", "shape": "diamond"},
+        {
+            "num": "01",
+            "tag": "BACKEND",
+            "title": ["SAAS", "ARCHITECT"],
+            "sub": "Building subscription platforms, user management systems, and scalable backend APIs with Laravel & Django.",
+            "accent": "#e84040",
+            "shape": "circle",
+            "backgroundImage": "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1800&q=80",
+        },
+        {
+            "num": "02",
+            "tag": "SECURITY",
+            "title": ["ZERO-KNOWLEDGE", "SYSTEMS"],
+            "sub": "Designing end-to-end encrypted vaults, KYC verification services, and client-side crypto applications.",
+            "accent": "#f5c842",
+            "shape": "square",
+            "backgroundImage": "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1800&q=80",
+        },
+        {
+            "num": "03",
+            "tag": "DEVOPS",
+            "title": ["HIGH-AVAILABILITY", "INFRA"],
+            "sub": "Deploying containerized systems with CI/CD pipelines, Nginx load balancing, and cloud infrastructure.",
+            "accent": "#4fa3e0",
+            "shape": "diamond",
+            "backgroundImage": "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=80",
+        },
     ]
 }
 
@@ -186,6 +276,7 @@ CONTACT_INFO_BODY = {
     "location": "Addis Ababa, Ethiopia",
     "status": "Available for new projects",
     "responseTime": "Within 24 hours",
+    "resumeUrl": "/HailegiorgisWagayeResume.pdf",
     "socials": [
         {"label": "GitHub", "href": "https://github.com/hgiorgis"},
         {"label": "LinkedIn", "href": "https://linkedin.com/in/hgiorgis23"},
@@ -305,6 +396,9 @@ class Command(BaseCommand):
                     "tags": p.get("tags", []),
                     "live_url": p.get("live_url", ""),
                     "github_url": p.get("github_url", ""),
+                    "cover_image": p.get("cover_image", ""),
+                    "gallery_images": p.get("gallery_images", []),
+                    "feature_highlights": p.get("feature_highlights", []),
                     "featured": p.get("featured", False),
                     "color": p.get("color", "#0f0f0f"),
                     "order": p.get("order", i + 1),

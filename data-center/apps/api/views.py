@@ -1,6 +1,8 @@
 import os
+from urllib.parse import urlparse
 from django.conf import settings
 from django.utils import timezone
+from django.db.models import Prefetch
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.http import JsonResponse
@@ -48,6 +50,107 @@ def _parse_period(period):
     else:
         start = now - timezone.timedelta(weeks=1)
     return start, now
+
+
+def _classify_traffic(referrer, utm_medium, utm_source):
+    """Rough bucket: direct, organic, social, referral."""
+    ref = (referrer or "").strip().lower()
+    um = (utm_medium or "").strip().lower()
+    us = (utm_source or "").strip().lower()
+    if um == "cpc" or um == "paid" or us == "google" and um:
+        return "paid"
+    if um == "organic" or "google." in ref or "bing." in ref or "duckduckgo." in ref:
+        return "organic"
+    social_hosts = ("twitter.", "t.co", "facebook.", "fb.", "instagram.", "linkedin.", "tiktok.", "reddit.")
+    if any(h in ref for h in social_hosts):
+        return "social"
+    if not ref or ref in ("", "direct"):
+        return "direct"
+    return "referral"
+
+
+def _parse_user_agent_heuristic(ua):
+    """Best-effort device / browser / OS from User-Agent (no extra deps)."""
+    ua = (ua or "")[:512]
+    ul = ua.lower()
+    if "iphone" in ul or ("android" in ul and "mobile" in ul) or ("mobile" in ul and "ipad" not in ul):
+        device = "mobile"
+    elif "ipad" in ul or "tablet" in ul:
+        device = "tablet"
+    else:
+        device = "desktop"
+    browser = "other"
+    if "edg/" in ul:
+        browser = "Edge"
+    elif "chrome" in ul and "chromium" not in ul:
+        browser = "Chrome"
+    elif "safari" in ul and "chrome" not in ul:
+        browser = "Safari"
+    elif "firefox" in ul:
+        browser = "Firefox"
+    os_name = "other"
+    if "windows" in ul:
+        os_name = "Windows"
+    elif "mac os" in ul or "macintosh" in ul:
+        os_name = "macOS"
+    elif "android" in ul:
+        os_name = "Android"
+    elif "iphone" in ul or "ipad" in ul:
+        os_name = "iOS"
+    elif "linux" in ul:
+        os_name = "Linux"
+    return device, browser, os_name
+
+
+def _apply_session_context(session, request, context):
+    """Merge client-reported context into VisitorSession (only fills blanks)."""
+    if not context or not isinstance(context, dict):
+        context = {}
+    updates = {}
+    server_ua = (request.META.get("HTTP_USER_AGENT") or "")[:512]
+    ua = (context.get("userAgent") or context.get("user_agent") or server_ua or "")[:512]
+    if ua and not session.user_agent:
+        updates["user_agent"] = ua
+        d, b, o = _parse_user_agent_heuristic(ua)
+        if not session.device_type:
+            updates["device_type"] = context.get("deviceType") or context.get("device_type") or d
+        if not session.browser:
+            updates["browser"] = context.get("browser") or b
+        if not session.os:
+            updates["os"] = context.get("os") or context.get("platform") or o
+    elif context.get("deviceType") and not session.device_type:
+        updates["device_type"] = context.get("deviceType") or context.get("device_type")
+    if context.get("browser") and not session.browser:
+        updates["browser"] = context.get("browser")[:64]
+    if context.get("os") and not session.os:
+        updates["os"] = context.get("os")[:64]
+    ref = (context.get("referrer") or context.get("documentReferrer") or "")[:2048]
+    if ref and not session.referrer:
+        updates["referrer"] = ref
+    lp = (context.get("landingPath") or context.get("landing_path") or "")[:500]
+    if lp and not session.landing_path:
+        updates["landing_path"] = lp
+    usrc = (context.get("utm_source") or context.get("utmSource") or "")[:128]
+    umed = (context.get("utm_medium") or context.get("utmMedium") or "")[:128]
+    ucamp = (context.get("utm_campaign") or context.get("utmCampaign") or "")[:128]
+    if usrc and not session.utm_source:
+        updates["utm_source"] = usrc
+    if umed and not session.utm_medium:
+        updates["utm_medium"] = umed
+    if ucamp and not session.utm_campaign:
+        updates["utm_campaign"] = ucamp
+    eff_ref = updates.get("referrer", session.referrer)
+    eff_us = updates.get("utm_source", session.utm_source)
+    eff_um = updates.get("utm_medium", session.utm_medium)
+    ttype = _classify_traffic(eff_ref, eff_um, eff_us)
+    if not session.traffic_type:
+        updates["traffic_type"] = ttype
+    if updates:
+        for k, v in updates.items():
+            setattr(session, k, v)
+        session.last_seen_at = timezone.now()
+        session.save(update_fields=list(updates.keys()) + ["last_seen_at"])
+
 
 
 # ---------- Owner: validate key (no auth) ----------
@@ -134,8 +237,9 @@ def owner_visitors(request):
     sessions = VisitorSession.objects.filter(last_seen_at__gte=start, last_seen_at__lte=end).order_by("-last_seen_at")
     total_visits = sessions.count()
 
+    from django.db.models import Sum, Count, Avg
+
     # Total time: sum of PageView durations for sessions active in period
-    from django.db.models import Sum
     duration_sum = PageView.objects.filter(
         session__in=sessions,
         duration_seconds__isnull=False,
@@ -143,13 +247,13 @@ def owner_visitors(request):
     total_time_min = round(duration_sum / 60, 1)
 
     # By page: path -> total duration (and/or visit count) for sessions in period
-    from django.db.models import Sum, Count
     by_page = list(
         PageView.objects.filter(session__in=sessions)
         .values("path")
         .annotate(
             duration=Sum("duration_seconds"),
             visits=Count("id"),
+            avg_scroll=Avg("max_scroll_percent"),
         )
         .order_by("-duration")
     )
@@ -159,6 +263,7 @@ def owner_visitors(request):
             "path": x["path"],
             "duration": round((x["duration"] or 0) / 60, 1),
             "visits": x["visits"],
+            "avgScrollPct": round(x["avg_scroll"] or 0, 1) if x.get("avg_scroll") is not None else None,
         }
         for x in by_page
     ]
@@ -166,11 +271,14 @@ def owner_visitors(request):
     events = list(
         VisitorEvent.objects.filter(session__in=sessions)
         .order_by("-created_at")[:200]
-        .values("id", "event_type", "path", "target", "created_at")
+        .values("id", "event_type", "path", "target", "created_at", "meta")
     )
     events_serializable = []
     for e in events:
         dt = e.get("created_at")
+        meta = e.get("meta") or {}
+        if isinstance(meta, dict) and len(str(meta)) > 600:
+            meta = {"_truncated": True, "keys": list(meta.keys())[:20]}
         events_serializable.append({
             "id": e.get("id"),
             "event_type": e.get("event_type"),
@@ -179,10 +287,27 @@ def owner_visitors(request):
             "type": e.get("event_type") or "click",
             "timestamp": timezone.localtime(dt).isoformat() if dt else "",
             "page": e.get("path") or e.get("target") or "",
+            "meta": meta,
         })
 
     visitors_list = list(
-        sessions.values("id", "session_id", "ip_address", "country_code", "started_at", "last_seen_at")[:100]
+        sessions.values(
+            "id",
+            "session_id",
+            "ip_address",
+            "country_code",
+            "started_at",
+            "last_seen_at",
+            "device_type",
+            "browser",
+            "os",
+            "referrer",
+            "landing_path",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "traffic_type",
+        )[:100]
     )
     visitors_serializable = []
     for v in visitors_list:
@@ -195,9 +320,70 @@ def owner_visitors(request):
             "country_code": v.get("country_code") or "",
             "ip": v.get("ip_address") or "",
             "country": v.get("country_code") or "",
+            "device_type": v.get("device_type") or "",
+            "browser": v.get("browser") or "",
+            "os": v.get("os") or "",
+            "referrer": (v.get("referrer") or "")[:200],
+            "landing_path": v.get("landing_path") or "",
+            "utm_source": v.get("utm_source") or "",
+            "utm_medium": v.get("utm_medium") or "",
+            "utm_campaign": v.get("utm_campaign") or "",
+            "traffic_type": v.get("traffic_type") or "",
             "started_at": timezone.localtime(started).isoformat() if started else "",
             "last_seen_at": timezone.localtime(last_seen).isoformat() if last_seen else "",
         })
+
+    live_now = VisitorSession.objects.filter(
+        last_seen_at__gte=timezone.now() - timezone.timedelta(minutes=5)
+    ).count()
+
+    avg_scroll_all = PageView.objects.filter(
+        session__in=sessions,
+        max_scroll_percent__isnull=False,
+    ).aggregate(Avg("max_scroll_percent"))["max_scroll_percent__avg"] or 0
+
+    devices = list(
+        sessions.exclude(device_type="").values("device_type").annotate(c=Count("id")).order_by("-c")[:12]
+    )
+    browsers = list(
+        sessions.exclude(browser="").values("browser").annotate(c=Count("id")).order_by("-c")[:12]
+    )
+    traffic_types = list(
+        sessions.exclude(traffic_type="").values("traffic_type").annotate(c=Count("id")).order_by("-c")
+    )
+
+    ref_counts = {}
+    for r in sessions.exclude(referrer="").values_list("referrer", flat=True)[:2500]:
+        try:
+            host = urlparse(r).netloc or str(r)[:120]
+        except Exception:
+            host = str(r)[:120]
+        if host:
+            ref_counts[host] = ref_counts.get(host, 0) + 1
+    top_referrers = [{"host": k, "count": v} for k, v in sorted(ref_counts.items(), key=lambda x: -x[1])[:15]]
+
+    sessions_sample = list(
+        sessions.prefetch_related(
+            Prefetch("page_views", queryset=PageView.objects.order_by("started_at"))
+        )[:400]
+    )
+    flow_counts = {}
+    for sess in sessions_sample:
+        paths = [pv.path for pv in sess.page_views.all()][:10]
+        if len(paths) >= 2:
+            key = " → ".join(paths)
+            flow_counts[key] = flow_counts.get(key, 0) + 1
+    top_flows = [{"flow": k, "count": v} for k, v in sorted(flow_counts.items(), key=lambda x: -x[1])[:18]]
+
+    insights = {
+        "liveNow": live_now,
+        "avgScrollPct": round(float(avg_scroll_all), 1),
+        "devices": devices,
+        "browsers": browsers,
+        "trafficTypes": traffic_types,
+        "topReferrers": top_referrers,
+        "topFlows": top_flows,
+    }
 
     return JsonResponse({
         "visitors": visitors_serializable,
@@ -207,6 +393,7 @@ def owner_visitors(request):
             "byPage": by_page,
         },
         "events": events_serializable,
+        "insights": insights,
     })
 
 
@@ -218,11 +405,14 @@ def owner_visitors_events(request):
     events = list(
         VisitorEvent.objects.filter(created_at__gte=start, created_at__lte=end)
         .order_by("-created_at")[:500]
-        .values("id", "event_type", "path", "target", "created_at")
+        .values("id", "event_type", "path", "target", "created_at", "meta")
     )
     events_serializable = []
     for e in events:
         dt = e.get("created_at")
+        meta = e.get("meta") or {}
+        if isinstance(meta, dict) and len(str(meta)) > 600:
+            meta = {"_truncated": True, "keys": list(meta.keys())[:20]}
         events_serializable.append({
             "id": e.get("id"),
             "event_type": e.get("event_type"),
@@ -231,6 +421,7 @@ def owner_visitors_events(request):
             "type": e.get("event_type") or "click",
             "timestamp": timezone.localtime(dt).isoformat() if dt else "",
             "page": e.get("path") or e.get("target") or "",
+            "meta": meta,
         })
     return JsonResponse({"events": events_serializable})
 
@@ -428,20 +619,84 @@ def track(request):
         session.last_seen_at = timezone.now()
         session.save(update_fields=["last_seen_at"])
 
-    event_type = data.get("type") or data.get("eventType") or "event"
+    ctx = data.get("context")
+    if isinstance(ctx, dict) and ctx:
+        _apply_session_context(session, request, ctx)
+    session.last_seen_at = timezone.now()
+    session.save(update_fields=["last_seen_at"])
+
+    event_type = (data.get("type") or data.get("eventType") or "event").strip()
     path = (data.get("path") or "").strip() or "/"
     target = (data.get("target") or "").strip()
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+
+    if event_type == "session_init":
+        return JsonResponse({"ok": True})
 
     if event_type == "page_view":
         PageView.objects.create(session=session, path=path)
         return JsonResponse({"ok": True})
 
+    if event_type == "scroll":
+        try:
+            pct = int(data.get("percent") or data.get("scrollPercent") or 0)
+        except (TypeError, ValueError):
+            pct = 0
+        pct = max(0, min(100, pct))
+        pv = (
+            PageView.objects.filter(session=session, path=path)
+            .order_by("-started_at")
+            .first()
+        )
+        if pv:
+            prev = pv.max_scroll_percent or 0
+            if pct > prev:
+                pv.max_scroll_percent = pct
+                pv.save(update_fields=["max_scroll_percent"])
+        return JsonResponse({"ok": True})
+
+    if event_type == "performance":
+        VisitorEvent.objects.create(
+            session=session,
+            event_type="web_vitals",
+            path=path,
+            target=(data.get("metric") or data.get("name") or "perf")[:500],
+            meta=meta,
+        )
+        return JsonResponse({"ok": True})
+
+    if event_type == "error":
+        VisitorEvent.objects.create(
+            session=session,
+            event_type="js_error",
+            path=path,
+            target=(data.get("message") or "error")[:500],
+            meta=meta,
+        )
+        return JsonResponse({"ok": True})
+
+    if event_type == "heatmap":
+        pts = data.get("points") or meta.get("points") or []
+        if isinstance(pts, list):
+            pts = pts[:40]
+        else:
+            pts = []
+        VisitorEvent.objects.create(
+            session=session,
+            event_type="heatmap",
+            path=path,
+            target="sample",
+            meta={"points": pts, "w": data.get("w"), "h": data.get("h")},
+        )
+        return JsonResponse({"ok": True})
+
     if event_type in ("click", "event"):
         VisitorEvent.objects.create(
             session=session,
-            event_type=data.get("eventType") or "click",
+            event_type=(data.get("eventType") or "click")[:32],
             path=path,
-            target=target,
+            target=target[:500],
+            meta=meta,
         )
         return JsonResponse({"ok": True})
 
@@ -465,11 +720,29 @@ def _format_visitor_detail(session):
     total_m = total_seconds // 60
     total_s = total_seconds % 60
 
+    dev = _escape_html(
+        " / ".join(
+            x
+            for x in (
+                session.device_type or "",
+                session.browser or "",
+                session.os or "",
+            )
+            if x
+        )
+        or "—"
+    )
+    ref_short = _escape_html((session.referrer or "—")[:180])
+    traffic = _escape_html(session.traffic_type or "—")
+
     lines = [
         "📋 <b>Visitor details</b>",
         "",
         f"🌐 <b>IP:</b> {ip}",
         f"📍 <b>Location:</b> {flag} {country}",
+        f"💻 <b>Device:</b> {dev}",
+        f"🔗 <b>Traffic:</b> {traffic}",
+        f"↩️ <b>Referrer:</b> {ref_short}",
         f"🕐 <b>First seen:</b> {started}",
         f"🕐 <b>Last seen:</b> {last_seen}",
         f"⏱ <b>Time on site:</b> {total_m}m {total_s}s",
@@ -479,7 +752,9 @@ def _format_visitor_detail(session):
     for pv in page_views[:10]:
         path = _escape_html(pv.path or "/")
         dur = pv.duration_seconds or 0
-        lines.append(f"• {path} — {dur}s")
+        scroll = pv.max_scroll_percent
+        scroll_bit = f", scroll {scroll}%" if scroll is not None else ""
+        lines.append(f"• {path} — {dur}s{scroll_bit}")
     if len(page_views) > 10:
         lines.append(f"… and {len(page_views) - 10} more")
 
