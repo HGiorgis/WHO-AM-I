@@ -272,27 +272,55 @@ def owner_visitors(request):
         for x in by_page
     ]
 
-    events = list(
+    # Events grouped by visitor session (newest activity first) — easier to read engagement per IP.
+    events_qs = list(
         VisitorEvent.objects.filter(session__in=sessions)
-        .order_by("-created_at")[:200]
-        .values("id", "event_type", "path", "target", "created_at", "meta")
+        .select_related("session")
+        .order_by("-created_at")[:400]
     )
-    events_serializable = []
-    for e in events:
-        dt = e.get("created_at")
-        meta = e.get("meta") or {}
+    group_order = []
+    groups_map = {}
+    for ev in events_qs:
+        sess = ev.session
+        sid = sess.session_id if sess else None
+        if not sid:
+            continue
+        if sid not in groups_map:
+            groups_map[sid] = {
+                "session_id": sid,
+                "ip_address": str(sess.ip_address) if sess.ip_address else "",
+                "country_code": (sess.country_code or "")[:4],
+                "device_type": sess.device_type or "",
+                "browser": sess.browser or "",
+                "last_seen_at": timezone.localtime(sess.last_seen_at).isoformat() if sess.last_seen_at else "",
+                "events": [],
+            }
+            group_order.append(sid)
+        meta = ev.meta or {}
         if isinstance(meta, dict) and len(str(meta)) > 600:
             meta = {"_truncated": True, "keys": list(meta.keys())[:20]}
-        events_serializable.append({
-            "id": e.get("id"),
-            "event_type": e.get("event_type"),
-            "path": e.get("path") or "",
-            "target": e.get("target") or "",
-            "type": e.get("event_type") or "click",
+        dt = ev.created_at
+        groups_map[sid]["events"].append({
+            "id": ev.id,
+            "event_type": ev.event_type,
+            "path": ev.path or "",
+            "target": ev.target or "",
+            "type": ev.event_type or "click",
             "timestamp": timezone.localtime(dt).isoformat() if dt else "",
-            "page": e.get("path") or e.get("target") or "",
+            "page": ev.path or ev.target or "",
             "meta": meta,
         })
+    event_groups = []
+    for sid in group_order:
+        g = groups_map[sid]
+        g["event_count"] = len(g["events"])
+        event_groups.append(g)
+
+    # Flat list for legacy clients (global newest-first, same rows as in eventGroups).
+    events_serializable = []
+    for g in event_groups:
+        events_serializable.extend(g.get("events") or [])
+    events_serializable.sort(key=lambda e: e.get("timestamp") or "", reverse=True)
 
     visitors_list = list(
         sessions.values(
@@ -396,6 +424,7 @@ def owner_visitors(request):
             "totalTime": total_time_min,
             "byPage": by_page,
         },
+        "eventGroups": event_groups,
         "events": events_serializable,
         "insights": insights,
     })
