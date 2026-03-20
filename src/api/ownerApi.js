@@ -111,6 +111,7 @@ export async function getVisitorStats(period = "week") {
       visitors: [],
       summary: { totalVisits: 0, totalTime: 0, byPage: [] },
       events: [],
+      insights: {},
     };
   }
 }
@@ -146,5 +147,22 @@ export async function getOwnerMessages() {
     return data.messages || [];
   } catch {
     return [];
+  }
+}
+
+/** PATCH /owner/messages/:id — body: { read: true|false } */
+export async function patchOwnerMessageRead(id, read = true) {
+  return request(`/owner/messages/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ read }),
+  });
+}
+
+/** Fired in the browser after inbox read state changes (welcome popup listens). */
+export function notifyOwnerInboxUpdated() {
+  try {
+    window.dispatchEvent(new CustomEvent("owner-inbox-updated"));
+  } catch {
+    /* ignore */
   }
 }

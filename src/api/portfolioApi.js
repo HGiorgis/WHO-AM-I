@@ -3,12 +3,12 @@
  * Uses VITE_OWNER_API_URL as base.
  */
 
+/** Same-origin `/api` works with Vite dev proxy and production Django mount. */
 const getBaseUrl = () =>
-  import.meta.env.VITE_OWNER_API_URL || "";
+  import.meta.env.VITE_OWNER_API_URL || "/api";
 
 async function get(endpoint) {
   const base = getBaseUrl();
-  if (!base) return null;
   const res = await fetch(`${base.replace(/\/$/, "")}${endpoint}`);
   if (!res.ok) throw new Error("Request failed");
   return res.json();
@@ -16,7 +16,6 @@ async function get(endpoint) {
 
 async function post(endpoint, body) {
   const base = getBaseUrl();
-  if (!base) throw new Error("No API URL");
   const res = await fetch(`${base.replace(/\/$/, "")}${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -28,9 +28,24 @@ const ICON_MAP = {
   default: Server,
 };
 
+function normalizeFeatureHighlights(raw) {
+  const list = Array.isArray(raw) ? raw.map((x) => (x && typeof x === "object" ? x : {})) : [];
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const h = list[i] || {};
+    out.push({
+      title: h.title || `Highlight ${i + 1}`,
+      body: h.body || h.text || h.desc || "",
+      image: typeof h.image === "string" ? h.image : h.img || "",
+    });
+  }
+  return out;
+}
+
 function mapApiProjectToUi(p, index) {
-  const firstTag = (p.tags && p.tags[0]) ? p.tags[0].toLowerCase() : "";
+  const firstTag = p.tags && p.tags[0] ? p.tags[0].toLowerCase() : "";
   const Icon = ICON_MAP[firstTag] || ICON_MAP.default;
+  const gallery = Array.isArray(p.gallery_images) ? p.gallery_images : [];
   return {
     id: p.id,
     num: String(index + 1).padStart(2, "0"),
@@ -43,8 +58,11 @@ function mapApiProjectToUi(p, index) {
     icon: Icon,
     featured: !!p.featured,
     cat: firstTag || "fullstack",
-    liveUrl: p.live_url,
-    githubUrl: p.github_url,
+    liveUrl: p.live_url || p.liveUrl,
+    githubUrl: p.github_url || p.githubUrl,
+    coverImage: p.cover_image || p.coverImage || "",
+    galleryImages: gallery.filter(Boolean).slice(0, 2),
+    featureHighlights: normalizeFeatureHighlights(p.feature_highlights || p.featureHighlights),
   };
 }
 
@@ -60,6 +78,8 @@ const cats = [
 function ProjectDetailPopup({ project, onClose }) {
   if (!project) return null;
   const Icon = project.icon;
+  const thumbs = project.galleryImages || [];
+  const features = project.featureHighlights || normalizeFeatureHighlights([]);
 
   const handleLiveClick = (e) => {
     e.stopPropagation();
@@ -77,48 +97,125 @@ function ProjectDetailPopup({ project, onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/45 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
+        initial={{ scale: 0.97, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
+        exit={{ scale: 0.97, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-paper border border-ink/15 shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-paper border border-ink/15 shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-hidden flex flex-col"
       >
-        <div className="p-6 md:p-8 flex-shrink-0 border-b border-ink/10 flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            <div
-              className="w-12 h-12 flex items-center justify-center border shrink-0"
-              style={{ borderColor: project.color, color: project.color }}
-            >
-              <Icon className="w-6 h-6" />
+        <div className="relative flex-shrink-0 border-b border-ink/10">
+          {project.coverImage ? (
+            <div className="relative aspect-[21/9] min-h-[200px] max-h-[46vh] w-full overflow-hidden bg-ink/5">
+              <img
+                src={project.coverImage}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div
+                className="absolute inset-0 opacity-25 mix-blend-multiply pointer-events-none"
+                style={{ backgroundColor: project.color }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-paper via-paper/20 to-transparent" />
             </div>
-            <div className="min-w-0">
-              <h2 className="font-syne font-bold uppercase tracking-tight text-xl text-ink truncate">
-                {project.title}
-              </h2>
-              {project.subtitle && (
-                <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest mt-0.5">
-                  {project.subtitle}
-                </p>
-              )}
-              <p className="font-mono text-xs text-ink/40 mt-1">{project.year}</p>
+          ) : (
+            <div
+              className="h-28 w-full opacity-90"
+              style={{
+                background: `linear-gradient(135deg, ${project.color}33 0%, transparent 70%), var(--paper, #faf8f5)`,
+              }}
+            />
+          )}
+          <div className="p-5 md:p-7 flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="w-12 h-12 flex items-center justify-center border shrink-0 bg-paper"
+                style={{ borderColor: project.color, color: project.color }}
+              >
+                <Icon className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-syne font-bold uppercase tracking-tight text-xl md:text-2xl text-ink">
+                  {project.title}
+                </h2>
+                {project.subtitle && (
+                  <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest mt-0.5">
+                    {project.subtitle}
+                  </p>
+                )}
+                <p className="font-mono text-xs text-ink/40 mt-1">{project.year}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 text-ink/50 hover:text-ink transition-colors shrink-0 border border-ink/10 bg-paper"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-5 md:p-7 overflow-y-auto flex-1 space-y-6">
+          {thumbs.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {thumbs.map((url, i) => (
+                <div
+                  key={i}
+                  className="relative overflow-hidden border border-ink/10 bg-ink/[0.03] aspect-[4/3]"
+                >
+                  <img src={url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <p className="text-sm text-ink/80 leading-relaxed">{project.desc}</p>
+
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-ink/40 mb-3">
+              Project highlights (3)
+            </p>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {features.map((f, i) => (
+                <div
+                  key={i}
+                  className="border border-ink/12 overflow-hidden flex flex-col bg-paper hover:border-ink/25 transition-colors"
+                >
+                  <div className="relative aspect-[16/10] bg-ink/5 shrink-0">
+                    {f.image ? (
+                      <img src={f.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div
+                        className="absolute inset-0 flex items-center justify-center opacity-40"
+                        style={{ background: `linear-gradient(160deg, ${project.color}44, transparent)` }}
+                      >
+                        <Icon className="w-8 h-8" style={{ color: project.color }} />
+                      </div>
+                    )}
+                    <div
+                      className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity pointer-events-none"
+                      style={{ backgroundColor: project.color }}
+                    />
+                  </div>
+                  <div className="p-3 flex-1 flex flex-col">
+                    <h3 className="font-syne font-bold uppercase text-xs tracking-tight text-ink leading-tight">
+                      {f.title}
+                    </h3>
+                    <p className="font-mono text-[10px] text-ink/55 mt-2 leading-relaxed flex-1">
+                      {f.body || "—"}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-ink/50 hover:text-ink transition-colors shrink-0"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-6 md:p-8 overflow-y-auto flex-1">
-          <p className="text-sm text-ink/80 leading-relaxed mb-6">{project.desc}</p>
-          <div className="flex flex-wrap gap-2 mb-6">
+
+          <div className="flex flex-wrap gap-2">
             {project.tags.map((t) => (
               <span
                 key={t}
@@ -128,7 +225,7 @@ function ProjectDetailPopup({ project, onClose }) {
               </span>
             ))}
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 pt-1">
             {project.liveUrl && (
               <a
                 href={project.liveUrl}
@@ -184,6 +281,20 @@ function FeaturedCard({ project, index, onSelect }) {
       className="border border-ink/10 relative overflow-hidden group cursor-pointer flex flex-col"
       data-cursor
     >
+      {project.coverImage ? (
+        <div className="relative h-44 w-full overflow-hidden shrink-0 border-b border-ink/10">
+          <img
+            src={project.coverImage}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+          <div
+            className="absolute inset-0 opacity-30 mix-blend-multiply"
+            style={{ backgroundColor: project.color }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-paper via-paper/30 to-transparent" />
+        </div>
+      ) : null}
       {/* Animated fill */}
       <motion.div
         animate={{ scaleY: hovered ? 1 : 0 }}
@@ -193,7 +304,7 @@ function FeaturedCard({ project, index, onSelect }) {
         className="absolute inset-0 opacity-[0.08] pointer-events-none"
       />
 
-      <div className="p-7 flex flex-col h-full relative">
+      <div className="p-7 flex flex-col h-full relative flex-1">
         {/* Top row */}
         <div className="flex items-start justify-between mb-6">
           <div
@@ -293,15 +404,21 @@ function ProjectRow({ project, index, onSelect }) {
           <span className="font-mono text-xs text-ink/30 w-6 shrink-0">
             {project.num}
           </span>
-          <div
-            className="w-8 h-8 flex items-center justify-center border shrink-0"
-            style={{
-              borderColor: hovered ? project.color : "rgba(0,0,0,0.1)",
-              color: hovered ? project.color : "rgba(0,0,0,0.3)",
-            }}
-          >
-            <Icon className="w-3.5 h-3.5" />
-          </div>
+          {project.coverImage ? (
+            <div className="w-11 h-11 shrink-0 rounded-sm overflow-hidden border border-ink/10">
+              <img src={project.coverImage} alt="" className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <div
+              className="w-8 h-8 flex items-center justify-center border shrink-0"
+              style={{
+                borderColor: hovered ? project.color : "rgba(0,0,0,0.1)",
+                color: hovered ? project.color : "rgba(0,0,0,0.3)",
+              }}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </div>
+          )}
           <div className="min-w-0">
             <motion.h3
               animate={{ x: hovered ? 6 : 0 }}

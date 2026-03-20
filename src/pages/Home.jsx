@@ -20,11 +20,39 @@ import ProcessSection from "../components/home/ProcessSection";
 import TestimonialsSection from "../components/home/TestimonialsSection";
 import TypedRole from "../components/home/TypedRole";
 import { fetchHome } from "@/api/portfolioApi";
+import { trackEvent } from "@/api/trackApi";
 
 const panelsFallback = [
-  { num: "01", tag: "BACKEND", title: ["SAAS", "ARCHITECT"], sub: "Building subscription platforms, user management systems, and scalable backend APIs with Laravel & Django.", accent: "#e84040", shape: "circle" },
-  { num: "02", tag: "SECURITY", title: ["ZERO-KNOWLEDGE", "SYSTEMS"], sub: "Designing end-to-end encrypted vaults, KYC verification services, and client-side crypto applications.", accent: "#f5c842", shape: "square" },
-  { num: "03", tag: "DEVOPS", title: ["HIGH-AVAILABILITY", "INFRA"], sub: "Deploying containerized systems with CI/CD pipelines, Nginx load balancing, and cloud infrastructure.", accent: "#4fa3e0", shape: "diamond" },
+  {
+    num: "01",
+    tag: "BACKEND",
+    title: ["SAAS", "ARCHITECT"],
+    sub: "Building subscription platforms, user management systems, and scalable backend APIs with Laravel & Django.",
+    accent: "#e84040",
+    shape: "circle",
+    backgroundImage:
+      "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1800&q=80",
+  },
+  {
+    num: "02",
+    tag: "SECURITY",
+    title: ["ZERO-KNOWLEDGE", "SYSTEMS"],
+    sub: "Designing end-to-end encrypted vaults, KYC verification services, and client-side crypto applications.",
+    accent: "#f5c842",
+    shape: "square",
+    backgroundImage:
+      "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1800&q=80",
+  },
+  {
+    num: "03",
+    tag: "DEVOPS",
+    title: ["HIGH-AVAILABILITY", "INFRA"],
+    sub: "Deploying containerized systems with CI/CD pipelines, Nginx load balancing, and cloud infrastructure.",
+    accent: "#4fa3e0",
+    shape: "diamond",
+    backgroundImage:
+      "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=80",
+  },
 ];
 
 function AnimTitle({ lines, accent }) {
@@ -53,7 +81,7 @@ function AnimTitle({ lines, accent }) {
 }
 
 function Shape({ type, color }) {
-  const base = "absolute pointer-events-none";
+  const base = "absolute pointer-events-none z-[2]";
   if (type === "circle")
     return (
       <motion.div
@@ -85,6 +113,7 @@ function Shape({ type, color }) {
 function PanelItem({ panel, index }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-80px" });
+  const bgUrl = panel.backgroundImage || panel.background_image;
 
   return (
     <motion.div
@@ -96,20 +125,36 @@ function PanelItem({ panel, index }) {
         delay: index * 0.15,
         ease: [0.22, 1, 0.36, 1],
       }}
-      className="relative flex flex-col justify-between p-8 md:p-10 border-r border-ink/10 last:border-r-0 min-h-[70vh] md:min-h-[60vh] group cursor-pointer"
+      className="relative flex flex-col justify-between p-8 md:p-10 border-r border-ink/10 last:border-r-0 min-h-[70vh] md:min-h-[60vh] group cursor-pointer overflow-hidden"
       data-cursor
     >
+      {bgUrl ? (
+        <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden>
+          <img
+            src={bgUrl}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover opacity-[0.22] saturate-[0.85] group-hover:opacity-100 group-hover:saturate-100 transition-all duration-700 ease-out scale-[1.03] group-hover:scale-100"
+          />
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-40 transition-opacity duration-500 mix-blend-multiply"
+            style={{ backgroundColor: panel.accent }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-paper/92 via-paper/55 to-paper/88 group-hover:from-paper/20 group-hover:via-paper/10 group-hover:to-paper/35 transition-all duration-500" />
+        </div>
+      ) : null}
+
       <motion.div
         initial={{ scaleY: 0 }}
         whileHover={{ scaleY: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         style={{ originY: 1, background: panel.accent }}
-        className="absolute inset-0 opacity-5 pointer-events-none"
+        className="absolute inset-0 z-[1] opacity-5 pointer-events-none group-hover:opacity-[0.12] transition-opacity duration-500"
       />
 
       <Shape type={panel.shape} color={panel.accent} />
 
-      <div className="flex items-center justify-between mb-10">
+      <div className="relative z-[2] flex items-center justify-between mb-10">
         <span className="font-mono text-xs text-ink/30">{panel.num}</span>
         <span
           className="font-mono text-[10px] uppercase tracking-[0.2em] px-3 py-1 border"
@@ -119,9 +164,9 @@ function PanelItem({ panel, index }) {
         </span>
       </div>
 
-      <div className="flex justify-center my-4">
+      <div className="relative z-[2] flex justify-center my-4">
         <div
-          className="w-32 h-32 rounded-full border-4 overflow-hidden flex items-center justify-center bg-ink/5 relative group-hover:scale-105 transition-transform duration-500"
+          className="w-32 h-32 rounded-full border-4 overflow-hidden flex items-center justify-center bg-paper/80 backdrop-blur-[2px] relative group-hover:scale-105 transition-transform duration-500 shadow-sm"
           style={{ borderColor: panel.accent }}
         >
           <span
@@ -148,11 +193,11 @@ function PanelItem({ panel, index }) {
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="relative z-[2] mt-6">
         <AnimTitle lines={panel.title} accent={panel.accent} />
       </div>
 
-      <div className="mt-6">
+      <div className="relative z-[2] mt-6">
         <Link
           to="/About"
           className="inline-flex items-center justify-center w-10 h-10 border border-ink/20 rounded-full hover:bg-ink hover:text-paper transition-all group/btn mr-3"
@@ -162,7 +207,9 @@ function PanelItem({ panel, index }) {
         <span className="text-xs text-ink/40 font-mono">Explore</span>
       </div>
 
-      <p className="mt-5 text-sm text-ink/50 leading-relaxed">{panel.sub}</p>
+      <p className="relative z-[2] mt-5 text-sm text-ink/50 leading-relaxed group-hover:text-ink/75 transition-colors duration-500">
+        {panel.sub}
+      </p>
     </motion.div>
   );
 }
@@ -268,7 +315,7 @@ function Hero() {
             Building secure, scalable SaaS platforms, verification systems, and
             high-availability infrastructure for startups.
           </p>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
             <Link
               to="/Projects"
               className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest bg-ink text-paper px-6 py-3 hover:bg-[#e84040] transition-colors"
@@ -277,6 +324,7 @@ function Hero() {
             </Link>
             <Link
               to="/Contact"
+              onClick={() => trackEvent("click", "hire_me_cta", "/Home")}
               className="font-mono text-xs uppercase tracking-widest border border-ink px-6 py-3 hover:bg-ink hover:text-paper transition-colors"
             >
               Hire Me
@@ -318,10 +366,31 @@ function PanelsSection({ panels = panelsFallback }) {
 }
 
 const worksFallback = [
-  { title: "KYC Verification Service", cat: "Security · Django", year: "2024", icon: ShieldCheck, color: "#e84040" },
-  { title: "LinkFlow — Redirect & Pixel Tracking", cat: "Node.js · Tracking", year: "2024", icon: Link2, color: "#f5c842" },
-  { title: "Sankrypt — Zero-Knowledge Vault", cat: "Security · Encryption", year: "2023", icon: Key, color: "#4fa3e0" },
-  { title: "HA Laravel Infrastructure", cat: "DevOps · Docker · CI/CD", year: "2022",
+  {
+    title: "KYC Verification Service",
+    cat: "Security · Django",
+    year: "2024",
+    icon: ShieldCheck,
+    color: "#e84040",
+  },
+  {
+    title: "LinkFlow — Redirect & Pixel Tracking",
+    cat: "Node.js · Tracking",
+    year: "2024",
+    icon: Link2,
+    color: "#f5c842",
+  },
+  {
+    title: "Sankrypt — Zero-Knowledge Vault",
+    cat: "Security · Encryption",
+    year: "2023",
+    icon: Key,
+    color: "#4fa3e0",
+  },
+  {
+    title: "HA Laravel Infrastructure",
+    cat: "DevOps · Docker · CI/CD",
+    year: "2022",
     icon: Cpu,
     color: "#2ecc71",
   },
@@ -348,41 +417,47 @@ function SelectedWork({ works = worksFallback }) {
           {list.map((w, i) => {
             const Icon = w.icon || Server;
             return (
-            <motion.div
-              key={w.title || i}
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: i * 0.1 }}
-              className="flex items-center justify-between py-6 group cursor-pointer"
-              data-cursor
-            >
-              <div className="flex items-center gap-5">
-                <span className="font-mono text-xs text-ink/30 w-6">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
-                <div
-                  className="w-8 h-8 border flex items-center justify-center shrink-0 transition-all group-hover:border-current"
-                  style={{ borderColor: "rgba(0,0,0,0.1)", color: w.color || "#0f0f0f" }}
-                >
-                  <Icon className="w-3.5 h-3.5" />
+              <motion.div
+                key={w.title || i}
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: i * 0.1 }}
+                className="flex items-center justify-between py-6 group cursor-pointer"
+                data-cursor
+              >
+                <div className="flex items-center gap-5">
+                  <span className="font-mono text-xs text-ink/30 w-6">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <div
+                    className="w-8 h-8 border flex items-center justify-center shrink-0 transition-all group-hover:border-current"
+                    style={{
+                      borderColor: "rgba(0,0,0,0.1)",
+                      color: w.color || "#0f0f0f",
+                    }}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </div>
+                  <h3
+                    className="font-syne font-bold uppercase tracking-tight group-hover:text-[#e84040] transition-colors"
+                    style={{ fontSize: "clamp(1rem, 2.5vw, 1.8rem)" }}
+                  >
+                    {w.title}
+                  </h3>
                 </div>
-                <h3
-                  className="font-syne font-bold uppercase tracking-tight group-hover:text-[#e84040] transition-colors"
-                  style={{ fontSize: "clamp(1rem, 2.5vw, 1.8rem)" }}
-                >
-                  {w.title}
-                </h3>
-              </div>
-              <div className="flex items-center gap-6">
-                <span className="hidden sm:block font-mono text-xs text-ink/40">
-                  {w.cat}
-                </span>
-                <span className="font-mono text-xs text-ink/30">{w.year}</span>
-                <ArrowUpRight className="w-4 h-4 text-ink/25 group-hover:text-[#e84040] group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
-              </div>
-            </motion.div>
-          ); })}
+                <div className="flex items-center gap-6">
+                  <span className="hidden sm:block font-mono text-xs text-ink/40">
+                    {w.cat}
+                  </span>
+                  <span className="font-mono text-xs text-ink/30">
+                    {w.year}
+                  </span>
+                  <ArrowUpRight className="w-4 h-4 text-ink/25 group-hover:text-[#e84040] group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>
@@ -495,9 +570,7 @@ export default function Home() {
       .then((data) => {
         if (data?.panels?.length) setPanels(data.panels);
         if (data?.works?.length) {
-          setWorks(
-            data.works.map((w) => ({ ...w, icon: w.icon || Server }))
-          );
+          setWorks(data.works.map((w) => ({ ...w, icon: w.icon || Server })));
         }
       })
       .catch(() => {})

@@ -6,6 +6,8 @@ import {
   Users,
   Clock,
   MousePointer,
+  Activity,
+  Globe,
   Plus,
   Trash2,
   ExternalLink,
@@ -13,6 +15,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Mail,
+  Crosshair,
+  Zap,
+  AlertTriangle,
 } from "lucide-react";
 import {
   getVisitorStats,
@@ -21,6 +26,8 @@ import {
   updateProject,
   deleteProject,
   getOwnerMessages,
+  patchOwnerMessageRead,
+  notifyOwnerInboxUpdated,
 } from "@/api/ownerApi";
 import SquareFlowLoader from "@/components/ui/SquareFlowLoader";
 
@@ -47,6 +54,255 @@ function formatDateTime(isoStr) {
   } catch {
     return isoStr;
   }
+}
+
+/** High-signal meta keys first; long / noisy blobs skipped in the dashboard. */
+const EVENT_META_PRIORITY = [
+  "tag",
+  "label",
+  "text",
+  "href",
+  "id",
+  "name",
+  "role",
+  "selector",
+  "metric",
+  "duration",
+  "value",
+];
+
+function clipMetaStr(str, n = 42) {
+  const s = String(str ?? "");
+  return s.length <= n ? s : `${s.slice(0, n)}…`;
+}
+
+function formatMetaScalar(val) {
+  if (val == null) return "";
+  if (typeof val === "number") {
+    if (!Number.isFinite(val)) return "—";
+    return Math.abs(val) < 10 && !Number.isInteger(val) ? String(Math.round(val * 100) / 100) : String(Math.round(val));
+  }
+  if (typeof val === "boolean") return val ? "yes" : "no";
+  if (typeof val === "object") return "object";
+  return clipMetaStr(val, 36);
+}
+
+function heatmapPointXY(p) {
+  if (Array.isArray(p) && p.length >= 2) {
+    const nx = Number(p[0]);
+    const ny = Number(p[1]);
+    if (Number.isFinite(nx) && Number.isFinite(ny)) return { nx, ny };
+  }
+  if (p && typeof p === "object") {
+    const nx = Number(p.x ?? p.nx);
+    const ny = Number(p.y ?? p.ny);
+    if (Number.isFinite(nx) && Number.isFinite(ny)) return { nx, ny };
+  }
+  return null;
+}
+
+function HeatmapMetaPreview({ meta }) {
+  const raw = Array.isArray(meta?.points) ? meta.points : [];
+  const pts = raw.map(heatmapPointXY).filter(Boolean);
+  const vw = 104;
+  const vh = 40;
+  if (!pts.length) {
+    return <span className="text-ink/40 font-mono text-[10px]">No samples</span>;
+  }
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <svg
+        width={vw}
+        height={vh}
+        className="shrink-0 border border-ink/15 bg-ink/[0.04]"
+        viewBox={`0 0 ${vw} ${vh}`}
+        aria-hidden
+      >
+        {pts.map((p, i) => {
+          const cx = Math.max(0, Math.min(1, p.nx)) * vw;
+          const cy = Math.max(0, Math.min(1, p.ny)) * vh;
+          return (
+            <circle
+              key={i}
+              cx={cx}
+              cy={cy}
+              r={2.2}
+              className="fill-[#e84040]/70"
+            />
+          );
+        })}
+      </svg>
+      <div className="min-w-0 flex flex-col gap-0.5">
+        <span className="font-mono text-[9px] text-ink/55 flex items-center gap-1">
+          <Crosshair className="w-3 h-3 text-ink/40 shrink-0" />
+          {pts.length} sample{pts.length !== 1 ? "s" : ""}
+        </span>
+        {meta?.w != null && meta?.h != null ? (
+          <span className="font-mono text-[9px] text-ink/40">{meta.w}×{meta.h}px</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function EventMetaSummary({ ev }) {
+  const rawType = String(ev?.event_type || ev?.type || "").toLowerCase();
+  const meta = ev?.meta && typeof ev.meta === "object" ? ev.meta : {};
+
+  if (meta._truncated && Array.isArray(meta.keys)) {
+    const keys = meta.keys;
+    return (
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="font-mono text-[8px] uppercase tracking-wider px-1 py-0.5 border border-ink/20 text-ink/50">
+          Trimmed
+        </span>
+        {keys.slice(0, 5).map((k) => (
+          <span
+            key={k}
+            className="font-mono text-[9px] text-ink/55 bg-ink/[0.06] px-1 py-0.5 border border-ink/8"
+          >
+            {k}
+          </span>
+        ))}
+        {keys.length > 5 ? (
+          <span className="font-mono text-[9px] text-ink/35">+{keys.length - 5}</span>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (rawType === "heatmap") {
+    return <HeatmapMetaPreview meta={meta} />;
+  }
+
+  if (rawType === "web_vitals") {
+    const entries = Object.entries(meta).filter(([k, v]) => !k.startsWith("_") && v != null && v !== "");
+    const limited = entries.slice(0, 4);
+    if (!limited.length) {
+      return <span className="text-ink/35 font-mono text-[10px]">—</span>;
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {limited.map(([k, v]) => (
+          <span
+            key={k}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-1.5 py-0.5 rounded-sm border border-[#4fa3e0]/30 bg-[#4fa3e0]/10 text-ink/85"
+            title={`${k}: ${JSON.stringify(v)}`}
+          >
+            <Zap className="w-3 h-3 text-[#2d8bc4] shrink-0 opacity-90" />
+            <span className="text-ink/45">{k}</span>
+            <span className="font-medium tabular-nums">{formatMetaScalar(v)}</span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (rawType === "js_error") {
+    const entries = Object.entries(meta).filter(([k, v]) => !k.startsWith("_") && v != null && v !== "");
+    const limited = entries.slice(0, 3);
+    if (!limited.length) {
+      return <span className="text-ink/35 font-mono text-[10px]">—</span>;
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {limited.map(([k, v]) => (
+          <span
+            key={k}
+            className="inline-flex items-center gap-1 font-mono text-[9px] px-1.5 py-0.5 rounded-sm border border-[#e84040]/25 bg-[#e84040]/8 text-ink/80 max-w-[10rem]"
+            title={`${k}: ${JSON.stringify(v)}`}
+          >
+            <AlertTriangle className="w-3 h-3 text-[#c43d3d] shrink-0" />
+            <span className="text-ink/50">{k}</span>
+            <span className="truncate">{formatMetaScalar(v)}</span>
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  const keys = Object.keys(meta).filter((k) => !k.startsWith("_"));
+  if (!keys.length) {
+    return <span className="text-ink/35 font-mono text-[10px]">—</span>;
+  }
+
+  const ordered = [
+    ...EVENT_META_PRIORITY.filter((k) => keys.includes(k)),
+    ...keys.filter((k) => !EVENT_META_PRIORITY.includes(k)),
+  ]
+    .filter((k) => {
+      const v = meta[k];
+      return !(typeof v === "object" && v !== null);
+    })
+    .slice(0, 4);
+
+  if (!ordered.length) {
+    return <span className="text-ink/35 font-mono text-[10px]">—</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {ordered.map((k) => (
+        <span
+          key={k}
+          className="inline-flex items-baseline gap-0.5 font-mono text-[9px] px-1.5 py-0.5 rounded-sm border border-ink/12 bg-ink/[0.04] max-w-[11rem]"
+          title={`${k}: ${String(meta[k])}`}
+        >
+          <span className="text-ink/45 shrink-0">{k}</span>
+          <span className="text-ink/80 truncate">{formatMetaScalar(meta[k])}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function eventTypeBadge(ev) {
+  const t = String(ev?.event_type || ev?.type || "—").toLowerCase();
+  const label = (ev?.event_type || ev?.type || "—").toUpperCase();
+  let cls =
+    "border-ink/15 bg-ink/[0.06] text-ink/70";
+  let Icon = MousePointer;
+  if (t === "heatmap") {
+    cls = "border-amber-700/25 bg-amber-500/10 text-amber-900/90";
+    Icon = Crosshair;
+  } else if (t === "web_vitals") {
+    cls = "border-[#4fa3e0]/35 bg-[#4fa3e0]/12 text-ink/85";
+    Icon = Zap;
+  } else if (t === "js_error") {
+    cls = "border-[#e84040]/30 bg-[#e84040]/10 text-[#8f2a2a]";
+    Icon = AlertTriangle;
+  }
+  return (
+    <span
+      className={`inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider px-2 py-0.5 border rounded-sm ${cls}`}
+    >
+      <Icon className="w-3 h-3 opacity-80 shrink-0" />
+      {label.length > 14 ? `${label.slice(0, 14)}…` : label}
+    </span>
+  );
+}
+
+function eventPageTargetCell(ev) {
+  const path = ev.page || ev.path || "";
+  const target = ev.target || "";
+  if (!path && !target) return <span className="text-ink/40">—</span>;
+  return (
+    <div className="space-y-0.5 min-w-0 max-w-md">
+      {path ? (
+        <p className="text-sm text-ink font-medium truncate" title={path}>
+          {path}
+        </p>
+      ) : null}
+      {target ? (
+        <p
+          className="font-mono text-[10px] text-ink/55 truncate"
+          title={target}
+        >
+          {target}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 const VISITORS_PAGE_SIZE = 10;
@@ -95,6 +351,7 @@ export default function OwnerDashboard() {
     visitors: [],
     summary: { totalVisits: 0, totalTime: 0, byPage: [] },
     events: [],
+    insights: {},
   });
   const [projects, setProjects] = useState([]);
   const [messages, setMessages] = useState([]);
@@ -111,13 +368,18 @@ export default function OwnerDashboard() {
     getVisitorStats(period)
       .then((data) => {
         if (!cancelled) {
-          setVisitorData(data || { visitors: [], summary: {}, events: [] });
+          setVisitorData(data || { visitors: [], summary: {}, events: [], insights: {} });
           setVisitorError(null);
         }
       })
       .catch((err) => {
         if (!cancelled) {
-          setVisitorData({ visitors: [], summary: { totalVisits: 0, totalTime: 0, byPage: [] }, events: [] });
+          setVisitorData({
+            visitors: [],
+            summary: { totalVisits: 0, totalTime: 0, byPage: [] },
+            events: [],
+            insights: {},
+          });
           setVisitorError(err?.message || "Could not load visitor data. Check VITE_OWNER_API_URL and owner key.");
         }
       })
@@ -222,8 +484,17 @@ export default function OwnerDashboard() {
 }
 
 function VisitorMonitor({ period, setPeriod, data, loading, error }) {
-  const { visitors = [], summary = {}, events = [] } = data;
+  const { visitors = [], summary = {}, events = [], insights = {} } = data;
   const { totalVisits = 0, totalTime = 0, byPage = [] } = summary;
+  const {
+    liveNow = 0,
+    avgScrollPct = 0,
+    devices = [],
+    browsers = [],
+    trafficTypes = [],
+    topReferrers = [],
+    topFlows = [],
+  } = insights || {};
   const [visitorPage, setVisitorPage] = useState(1);
   const [eventPage, setEventPage] = useState(1);
 
@@ -286,11 +557,13 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
           <BarChart2 className="w-3.5 h-3.5" />
           Overview
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { label: "Total visits", value: totalVisits, icon: Users },
           { label: "Total time (min)", value: Math.round(totalTime || 0), icon: Clock },
           { label: "Events (clicks)", value: events.length, icon: MousePointer },
+          { label: "Live now (~5m)", value: liveNow, icon: Activity },
+          { label: "Avg scroll %", value: avgScrollPct, icon: BarChart2 },
         ].map(({ label, value, icon: Icon }) => (
           <div
             key={label}
@@ -331,10 +604,13 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                   className="px-6 py-4 flex items-center justify-between"
                 >
                   <span className="font-medium text-ink">{row.page || row.path || "—"}</span>
-                  <span className="font-mono text-sm text-ink/60">
+                  <span className="font-mono text-sm text-ink/60 text-right max-w-[55%]">
                     {row.duration != null ? `${row.duration} min` : ""}
                     {row.duration != null && row.visits != null ? " · " : ""}
                     {row.visits != null ? `${row.visits} visits` : ""}
+                    {row.avgScrollPct != null && row.avgScrollPct > 0
+                      ? ` · ~${row.avgScrollPct}% scroll`
+                      : ""}
                     {row.duration == null && row.visits == null ? "—" : ""}
                   </span>
                 </div>
@@ -345,6 +621,101 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* ——— Section: Traffic & funnels ——— */}
+      <section className="space-y-6">
+        <h3 className="font-mono text-[11px] uppercase tracking-widest text-ink/50 flex items-center gap-2">
+          <Globe className="w-3.5 h-3.5" />
+          Traffic & journeys
+        </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="border border-ink/10 p-6 space-y-3">
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Devices</p>
+            {loading ? (
+              <p className="text-ink/40 font-mono text-sm">…</p>
+            ) : devices.length ? (
+              <ul className="space-y-1 font-mono text-xs text-ink/80">
+                {devices.map((d) => (
+                  <li key={d.device_type} className="flex justify-between gap-4">
+                    <span>{d.device_type || "—"}</span>
+                    <span className="text-ink/50">{d.c}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-ink/40 font-mono text-sm">No device data yet.</p>
+            )}
+          </div>
+          <div className="border border-ink/10 p-6 space-y-3">
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Browsers</p>
+            {loading ? (
+              <p className="text-ink/40 font-mono text-sm">…</p>
+            ) : browsers.length ? (
+              <ul className="space-y-1 font-mono text-xs text-ink/80">
+                {browsers.map((b) => (
+                  <li key={b.browser} className="flex justify-between gap-4">
+                    <span>{b.browser || "—"}</span>
+                    <span className="text-ink/50">{b.c}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-ink/40 font-mono text-sm">No browser data yet.</p>
+            )}
+          </div>
+          <div className="border border-ink/10 p-6 space-y-3">
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Traffic type</p>
+            {loading ? (
+              <p className="text-ink/40 font-mono text-sm">…</p>
+            ) : trafficTypes.length ? (
+              <ul className="space-y-1 font-mono text-xs text-ink/80">
+                {trafficTypes.map((t) => (
+                  <li key={t.traffic_type} className="flex justify-between gap-4">
+                    <span>{t.traffic_type || "—"}</span>
+                    <span className="text-ink/50">{t.c}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-ink/40 font-mono text-sm">No traffic buckets yet.</p>
+            )}
+          </div>
+          <div className="border border-ink/10 p-6 space-y-3">
+            <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Top referrers</p>
+            {loading ? (
+              <p className="text-ink/40 font-mono text-sm">…</p>
+            ) : topReferrers.length ? (
+              <ul className="space-y-1 font-mono text-xs text-ink/80 break-all">
+                {topReferrers.map((r) => (
+                  <li key={r.host} className="flex justify-between gap-4">
+                    <span>{r.host}</span>
+                    <span className="text-ink/50 shrink-0">{r.count}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-ink/40 font-mono text-sm">No referrer data.</p>
+            )}
+          </div>
+        </div>
+        <div className="border border-ink/10 p-6 space-y-3">
+          <p className="font-mono text-[10px] text-ink/50 uppercase tracking-widest">Common paths (funnel-style)</p>
+          {loading ? (
+            <p className="text-ink/40 font-mono text-sm">…</p>
+          ) : topFlows.length ? (
+            <ul className="space-y-2 font-mono text-[11px] text-ink/80 leading-relaxed">
+              {topFlows.map((f) => (
+                <li key={f.flow} className="flex justify-between gap-4 border-b border-ink/5 pb-2 last:border-0">
+                  <span className="break-all">{f.flow}</span>
+                  <span className="text-ink/50 shrink-0">{f.count}×</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-ink/40 font-mono text-sm">Need multi-page sessions to build path flows.</p>
+          )}
         </div>
       </section>
 
@@ -369,6 +740,12 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                     Flag
                   </th>
                   <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
+                    Device
+                  </th>
+                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
+                    Traffic
+                  </th>
+                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
                     Last seen
                   </th>
                 </tr>
@@ -376,7 +753,7 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12">
+                    <td colSpan={6} className="px-6 py-12">
                       <div className="flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
                         <SquareFlowLoader size="sm" />
                         <span>Loading…</span>
@@ -400,6 +777,12 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                       <td className="px-6 py-3 text-lg leading-none">
                         {code ? countryFlag(code) : "—"}
                       </td>
+                      <td className="px-6 py-3 font-mono text-[10px] text-ink/70 max-w-[120px]">
+                        {[v.device_type, v.browser].filter(Boolean).join(" · ") || "—"}
+                      </td>
+                      <td className="px-6 py-3 font-mono text-[10px] text-ink/60">
+                        {v.traffic_type || "—"}
+                      </td>
                       <td className="px-6 py-3 font-mono text-xs text-ink/60">
                         {formatDateTime(v.last_seen_at ?? v.lastSeenAt)}
                       </td>
@@ -408,7 +791,7 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                 })
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
+                  <td colSpan={6} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
                     No visitors yet. Connect backend and add tracking to your site.
                   </td>
                 </tr>
@@ -442,15 +825,18 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                   <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
                     Page / Target
                   </th>
-                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50">
+                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50 whitespace-nowrap">
                     Type
+                  </th>
+                  <th className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-ink/50 min-w-[14rem]">
+                    Summary
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={3} className="px-6 py-12">
+                    <td colSpan={4} className="px-6 py-12">
                       <div className="flex flex-col items-center justify-center gap-3 text-ink/50 font-mono text-sm">
                         <SquareFlowLoader size="sm" />
                         <span>Loading…</span>
@@ -468,15 +854,25 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
                         <td className="px-6 py-3 text-sm text-ink">
                           {ev.page || ev.path || ev.target || "—"}
                         </td>
-                        <td className="px-6 py-3 font-mono text-xs text-ink/60">
-                          {ev.type || ev.event || "view"}
+                        <td className="px-6 py-3 font-mono text-xs text-ink/60 uppercase">
+                          {ev.event_type || ev.type || ev.event || "—"}
+                        </td>
+                        <td
+                          className="px-6 py-3 font-mono text-[10px] text-ink/50 max-w-xs truncate"
+                          title={ev.meta ? JSON.stringify(ev.meta) : ""}
+                        >
+                          {ev.meta && Object.keys(ev.meta).length
+                            ? `${JSON.stringify(ev.meta).slice(0, 80)}${
+                                JSON.stringify(ev.meta).length > 80 ? "…" : ""
+                              }`
+                            : "—"}
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={3} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
+                    <td colSpan={4} className="px-6 py-12 text-center text-ink/50 font-mono text-sm">
                       No events yet. Connect backend and add tracking to your site.
                     </td>
                   </tr>
@@ -496,20 +892,74 @@ function VisitorMonitor({ period, setPeriod, data, loading, error }) {
   );
 }
 
-function MessagesSection({ messages, loading }) {
+function messageIsUnread(m) {
+  if (!m || typeof m !== "object") return true;
+  const r = m.read;
+  if (r === true || r === 1 || r === "1" || r === "true") return false;
+  return true;
+}
+
+function MessagesSection({ messages, loading, setMessages }) {
+  const [busyId, setBusyId] = useState(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const unreadCount = messages.filter(messageIsUnread).length;
+
+  const markRead = async (id) => {
+    setBusyId(id);
+    try {
+      await patchOwnerMessageRead(id, true);
+      setMessages((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, read: true } : x))
+      );
+      notifyOwnerInboxUpdated();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const markAllRead = async () => {
+    const ids = messages.filter(messageIsUnread).map((m) => m.id);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    try {
+      await Promise.all(ids.map((id) => patchOwnerMessageRead(id, true)));
+      setMessages((prev) => prev.map((x) => ({ ...x, read: true })));
+      notifyOwnerInboxUpdated();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      <div>
-        <h2 className="font-syne font-bold uppercase tracking-tight text-2xl">
-          Contact messages
-        </h2>
-        <p className="text-sm text-ink/60 mt-1">
-          Messages sent from the site contact form. You also get Telegram notifications for each new message.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h2 className="font-syne font-bold uppercase tracking-tight text-2xl">
+            Contact messages
+          </h2>
+          <p className="text-sm text-ink/60 mt-1">
+            Messages sent from the site contact form. You also get Telegram notifications for each new message.
+            Mark as read when handled — the welcome summary only counts unread.
+          </p>
+        </div>
+        {messages.length > 0 && unreadCount > 0 && (
+          <button
+            type="button"
+            onClick={markAllRead}
+            disabled={bulkBusy || loading}
+            className="self-start border border-ink/20 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-ink/70 hover:bg-ink/5 disabled:opacity-50"
+          >
+            {bulkBusy ? "Updating…" : `Mark all read (${unreadCount})`}
+          </button>
+        )}
       </div>
       <div className="border border-ink/10">
         <div className="overflow-x-auto">
@@ -527,13 +977,20 @@ function MessagesSection({ messages, loading }) {
               {messages.map((m) => (
                 <div
                   key={m.id}
-                  className={`px-6 py-5 ${m.read ? "bg-ink/[0.02]" : ""}`}
+                  className={`px-6 py-5 ${!messageIsUnread(m) ? "bg-ink/[0.02]" : "bg-[#e84040]/[0.04]"}`}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4 mb-2">
-                    <div>
-                      <p className="font-grotesk font-medium text-ink">
-                        {m.name || "—"}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-grotesk font-medium text-ink">
+                          {m.name || "—"}
+                        </p>
+                        {messageIsUnread(m) && (
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-[#c43d3d] border border-[#c43d3d]/30 px-1.5 py-0.5">
+                            Unread
+                          </span>
+                        )}
+                      </div>
                       <a
                         href={`mailto:${m.email || ""}`}
                         className="font-mono text-xs text-ink/60 hover:text-[#4fa3e0]"
@@ -541,9 +998,21 @@ function MessagesSection({ messages, loading }) {
                         {m.email || "—"}
                       </a>
                     </div>
-                    <span className="font-mono text-[10px] text-ink/40">
-                      {formatDateTime(m.created_at)}
-                    </span>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className="font-mono text-[10px] text-ink/40">
+                        {formatDateTime(m.created_at)}
+                      </span>
+                      {messageIsUnread(m) && (
+                        <button
+                          type="button"
+                          onClick={() => markRead(m.id)}
+                          disabled={busyId === m.id}
+                          className="font-mono text-[10px] uppercase tracking-widest border border-ink/20 px-2 py-1 text-ink/70 hover:bg-ink/5 disabled:opacity-50"
+                        >
+                          {busyId === m.id ? "…" : "Mark read"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-ink/70 leading-relaxed whitespace-pre-wrap">
                     {m.message || "—"}
@@ -560,6 +1029,18 @@ function MessagesSection({ messages, loading }) {
 
 function ProjectManagement({ projects, setProjects, formState, setFormState, loading }) {
   const [submitting, setSubmitting] = useState(false);
+  const emptyFeatureForm = () => ({
+    f1t: "",
+    f1b: "",
+    f1img: "",
+    f2t: "",
+    f2b: "",
+    f2img: "",
+    f3t: "",
+    f3b: "",
+    f3img: "",
+  });
+
   const [form, setForm] = useState({
     title: "",
     subtitle: "",
@@ -568,8 +1049,12 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
     tags: "",
     liveUrl: "",
     githubUrl: "",
+    coverImage: "",
+    gallery1: "",
+    gallery2: "",
     featured: false,
     color: "#0f0f0f",
+    ...emptyFeatureForm(),
   });
 
   const openCreate = () => {
@@ -581,23 +1066,52 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
       tags: "",
       liveUrl: "",
       githubUrl: "",
+      coverImage: "",
+      gallery1: "",
+      gallery2: "",
       featured: false,
       color: "#0f0f0f",
+      ...emptyFeatureForm(),
     });
     setFormState({ open: true });
   };
 
   const openEdit = (p) => {
+    const gallery = Array.isArray(p.gallery_images) ? p.gallery_images : [];
+    const fh = Array.isArray(p.feature_highlights) ? p.feature_highlights : [];
+    const slot = (i) => {
+      const h = fh[i] || {};
+      return {
+        t: h.title || "",
+        b: h.body || h.text || h.desc || "",
+        img: h.image || h.img || "",
+      };
+    };
+    const s0 = slot(0);
+    const s1 = slot(1);
+    const s2 = slot(2);
     setForm({
       title: p.title || "",
       subtitle: p.subtitle || "",
       desc: p.description || p.desc || "",
       year: p.year || new Date().getFullYear().toString(),
       tags: Array.isArray(p.tags) ? p.tags.join(", ") : (p.tags || ""),
-      liveUrl: p.liveUrl || "",
-      githubUrl: p.githubUrl || "",
+      liveUrl: p.live_url || p.liveUrl || "",
+      githubUrl: p.github_url || p.githubUrl || "",
+      coverImage: p.cover_image || p.coverImage || "",
+      gallery1: gallery[0] || "",
+      gallery2: gallery[1] || "",
       featured: !!p.featured,
       color: p.color || "#0f0f0f",
+      f1t: s0.t,
+      f1b: s0.b,
+      f1img: s0.img,
+      f2t: s1.t,
+      f2b: s1.b,
+      f2img: s1.img,
+      f3t: s2.t,
+      f3b: s2.b,
+      f3img: s2.img,
     });
     setFormState({ open: true, edit: p });
   };
@@ -607,6 +1121,16 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    const feature_highlights = [
+      { title: form.f1t, body: form.f1b, image: form.f1img },
+      { title: form.f2t, body: form.f2b, image: form.f2img },
+      { title: form.f3t, body: form.f3b, image: form.f3img },
+    ].map((x) => ({
+      title: (x.title || "").trim() || "Highlight",
+      body: (x.body || "").trim(),
+      image: (x.image || "").trim(),
+    }));
+
     const payload = {
       title: form.title,
       subtitle: form.subtitle || undefined,
@@ -614,8 +1138,11 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
       desc: form.desc,
       year: form.year,
       tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-      liveUrl: form.liveUrl || undefined,
-      githubUrl: form.githubUrl || undefined,
+      live_url: form.liveUrl || "",
+      github_url: form.githubUrl || "",
+      cover_image: (form.coverImage || "").trim(),
+      gallery_images: [form.gallery1, form.gallery2].map((u) => (u || "").trim()).filter(Boolean),
+      feature_highlights,
       featured: form.featured,
       color: form.color,
     };
@@ -757,7 +1284,7 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-paper border border-ink/15 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+            className="bg-paper border border-ink/15 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="p-6 border-b border-ink/10 flex items-center justify-between">
               <h3 className="font-syne font-bold uppercase tracking-tight">
@@ -861,6 +1388,81 @@ function ProjectManagement({ projects, setProjects, formState, setFormState, loa
                   placeholder="https://github.com/..."
                   className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk focus:outline-none focus:border-ink/40"
                 />
+              </div>
+              <div className="border-t border-ink/10 pt-4 space-y-3">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-ink/50">
+                  Images (URLs) — main + 2 gallery + 3 highlight cards
+                </p>
+                <div>
+                  <label className="block font-mono text-[10px] uppercase tracking-widest text-ink/50 mb-1">
+                    Main / cover image
+                  </label>
+                  <input
+                    type="url"
+                    value={form.coverImage}
+                    onChange={(e) => setForm((f) => ({ ...f, coverImage: e.target.value }))}
+                    placeholder="https://…"
+                    className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-mono text-[10px] uppercase tracking-widest text-ink/50 mb-1">
+                      Gallery image 1
+                    </label>
+                    <input
+                      type="url"
+                      value={form.gallery1}
+                      onChange={(e) => setForm((f) => ({ ...f, gallery1: e.target.value }))}
+                      placeholder="https://…"
+                      className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-mono text-[10px] uppercase tracking-widest text-ink/50 mb-1">
+                      Gallery image 2
+                    </label>
+                    <input
+                      type="url"
+                      value={form.gallery2}
+                      onChange={(e) => setForm((f) => ({ ...f, gallery2: e.target.value }))}
+                      placeholder="https://…"
+                      className="w-full border border-ink/15 px-4 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
+                    />
+                  </div>
+                </div>
+                {[1, 2, 3].map((n) => {
+                  const tKey = `f${n}t`;
+                  const bKey = `f${n}b`;
+                  const iKey = `f${n}img`;
+                  return (
+                    <div key={n} className="border border-ink/10 p-3 space-y-2 bg-ink/[0.02]">
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-ink/45">
+                        Highlight {n}
+                      </p>
+                      <input
+                        value={form[tKey]}
+                        onChange={(e) => setForm((f) => ({ ...f, [tKey]: e.target.value }))}
+                        placeholder="Title"
+                        className="w-full border border-ink/15 px-3 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
+                      />
+                      <textarea
+                        value={form[bKey]}
+                        onChange={(e) => setForm((f) => ({ ...f, [bKey]: e.target.value }))}
+                        placeholder="Short description"
+                        rows={2}
+                        className="w-full border border-ink/15 px-3 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40 resize-none"
+                      />
+                      <input
+                        type="url"
+                        value={form[iKey]}
+                        onChange={(e) => setForm((f) => ({ ...f, [iKey]: e.target.value }))}
+                        placeholder="Image URL"
+                        className="w-full border border-ink/15 px-3 py-2 text-ink bg-paper font-grotesk text-sm focus:outline-none focus:border-ink/40"
+                      />
+                    </div>
+                  );
+                })}
               </div>
               <label className="flex items-center gap-2">
                 <input

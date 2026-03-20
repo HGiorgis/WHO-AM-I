@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, CheckCircle } from "lucide-react";
+import { ArrowUpRight, CheckCircle, FileText } from "lucide-react";
 import MarqueeBand from "../components/layout/MarqueeBand";
 import { fetchContactInfo, submitContact } from "@/api/portfolioApi";
 import { trackEvent } from "@/api/trackApi";
@@ -28,7 +28,8 @@ export default function Contact() {
   useEffect(() => {
     fetchContactInfo()
       .then((data) => {
-        if (data && (data.email || data.socials?.length)) setInfo({ ...contactInfoFallback, ...data });
+        if (data && (data.email || data.socials?.length))
+          setInfo({ ...contactInfoFallback, ...data });
       })
       .catch(() => {});
   }, []);
@@ -38,7 +39,12 @@ export default function Contact() {
     setError(null);
     trackEvent("click", "contact_submit", "/Contact");
     try {
-      await submitContact({ name: form.name, email: form.email, message: form.message });
+      await submitContact({
+        name: form.name,
+        email: form.email,
+        message: form.message,
+      });
+      trackEvent("submit", "contact_form_success", "/Contact");
       setSent(true);
       setForm({ name: "", email: "", message: "" });
       setTimeout(() => setSent(false), 4000);
@@ -137,31 +143,29 @@ export default function Contact() {
                 <p className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-1">
                   Response Time
                 </p>
-                <p className="font-grotesk text-sm">{info.responseTime || "—"}</p>
+                <p className="font-grotesk text-sm">
+                  {info.responseTime || "—"}
+                </p>
               </div>
             </div>
 
             {/* Resume download */}
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 border border-ink/20 px-5 py-3 font-mono text-xs uppercase tracking-widest hover:bg-ink hover:text-paper transition-colors group mb-10"
-            >
-              <svg
-                className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
-                />
-              </svg>
-              Download Resume
-            </a>
 
+            <a
+              href="/HailegiorgisWagayeResume.pdf"
+              download
+              onClick={() =>
+                trackEvent(
+                  "download",
+                  "HailegiorgisWagayeResume.pdf",
+                  "/Contact",
+                )
+              }
+              className="font-mono text-xs uppercase tracking-widest border border-ink/40 px-6 py-3 hover:border-ink hover:bg-ink/5 transition-colors inline-flex items-center gap-2 mb-10"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              See Resume
+            </a>
             {/* Socials */}
             <div>
               <p className="font-mono text-[10px] uppercase tracking-widest text-ink/30 mb-4">

@@ -4,6 +4,7 @@ import { ArrowUpRight } from "lucide-react";
 import MarqueeBand from "./MarqueeBand";
 import SiteMark from "@/components/brand/SiteMark";
 import { fetchContactInfo } from "@/api/portfolioApi";
+import { trackEvent } from "@/api/trackApi";
 
 const NAV = [
   ["Home", "/Home"],
@@ -36,6 +37,8 @@ export default function FooterNew() {
   }, []);
 
   const emailHref = info.email ? `mailto:${info.email}` : "#";
+  const resumeHref =
+    info.resumeUrl || info.resume_url || "/HailegiorgisWagayeResume.pdf";
 
   return (
     <footer className="bg-ink text-paper">
@@ -76,15 +79,6 @@ export default function FooterNew() {
                   <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
                 </a>
               ))}
-              {info.email && (
-                <a
-                  href={emailHref}
-                  className="flex items-center gap-1 text-paper/70 hover:text-[#f5c842] transition-colors font-grotesk text-sm group"
-                >
-                  Email ({info.email}){" "}
-                  <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all" />
-                </a>
-              )}
             </div>
           </div>
           <div>
@@ -93,7 +87,9 @@ export default function FooterNew() {
             </p>
             <div className="flex items-center gap-2 mb-3">
               <span className="w-2 h-2 rounded-full bg-[#2ecc71] animate-pulse" />
-              <span className="text-sm text-paper/70">{info.status || "—"}</span>
+              <span className="text-sm text-paper/70">
+                {info.status || "—"}
+              </span>
             </div>
             <p className="text-xs text-paper/30 font-mono">
               {info.location || "—"}

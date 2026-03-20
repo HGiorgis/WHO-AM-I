@@ -6,9 +6,11 @@ import Cursor from "./Cursor";
 import ScrollProgress from "./ScrollProgress";
 import BackToTop from "./BackToTop";
 import { trackPageView, trackLeave } from "@/api/trackApi";
+import { useAdvancedAnalytics } from "@/hooks/useAdvancedAnalytics";
 
 export default function PortfolioLayout() {
   const location = useLocation();
+  useAdvancedAnalytics(location.pathname || "/");
   const pathRef = useRef("");
   const startRef = useRef(0);
 

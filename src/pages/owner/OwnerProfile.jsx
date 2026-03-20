@@ -17,6 +17,7 @@ const emptyPanel = () => ({
   sub: "Short description for this panel.",
   accent: "#e84040",
   shape: "circle",
+  backgroundImage: "",
 });
 
 function normalizeContact(body) {
@@ -54,6 +55,7 @@ export default function OwnerProfile() {
         sub: p.sub || "",
         accent: p.accent || "#0f0f0f",
         shape: p.shape || "circle",
+        backgroundImage: p.backgroundImage || p.background_image || "",
       })) : [emptyPanel()]);
       setAboutText(JSON.stringify(blocks.about || { skills: [], stack: [], experience: [] }, null, 2));
     } catch (e) {
@@ -106,6 +108,7 @@ export default function OwnerProfile() {
         sub: p.sub?.trim() || "",
         accent: p.accent?.trim() || "#0f0f0f",
         shape: p.shape || "circle",
+        backgroundImage: (p.backgroundImage || "").trim(),
       }));
       await patchOwnerContent("home_panels", { panels: cleaned });
       showNotice("Home panels saved.");
@@ -290,8 +293,10 @@ export default function OwnerProfile() {
 
             {section === "home" && (
               <div className="space-y-8">
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-ink/60">Panels shown on the Home page below the hero.</p>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-ink/60 max-w-xl">
+                    Panels below the hero. Optional <span className="font-mono text-xs">backgroundImage</span> URL: soft by default, full on hover with accent tint.
+                  </p>
                   <button
                     type="button"
                     onClick={addPanel}
@@ -326,6 +331,11 @@ export default function OwnerProfile() {
                         className="w-full border border-ink/15 px-4 py-3 text-sm font-grotesk bg-transparent resize-y"
                       />
                     </div>
+                    <Field
+                      label="Background image URL (optional)"
+                      value={p.backgroundImage || ""}
+                      onChange={(v) => updatePanel(i, "backgroundImage", v)}
+                    />
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Field label="Accent (hex)" value={p.accent} onChange={(v) => updatePanel(i, "accent", v)} />
                       <div>

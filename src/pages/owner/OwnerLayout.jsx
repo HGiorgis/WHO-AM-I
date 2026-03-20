@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { LogOut, Users, FileText } from "lucide-react";
 import { useOwner } from "@/lib/OwnerContext";
+import OwnerWelcomePopup from "@/components/owner/OwnerWelcomePopup";
 
 export default function OwnerLayout() {
   const { lock } = useOwner();
@@ -13,6 +14,7 @@ export default function OwnerLayout() {
 
   return (
     <div className="min-h-screen bg-paper text-ink">
+      <OwnerWelcomePopup />
       <header className="border-b border-ink/10 sticky top-0 z-10 bg-paper/95 backdrop-blur">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-6 flex-wrap">

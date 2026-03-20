@@ -51,6 +51,11 @@ export function OwnerProvider({ children }) {
   const lock = useCallback(() => {
     sessionStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(VALIDATED_KEY);
+    try {
+      sessionStorage.removeItem("owner_welcome_popup_dismissed_v1");
+    } catch {
+      /* ignore */
+    }
     setUnlocked(false);
   }, []);
 
