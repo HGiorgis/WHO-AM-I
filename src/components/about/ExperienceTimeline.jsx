@@ -4,25 +4,18 @@ import { Briefcase } from "lucide-react";
 
 const experiences = [
   {
-    role: "Senior DevOps Engineer",
-    company: "Cloud Solutions Inc.",
-    period: "2022 – Present",
+    role: "Full-Stack & Backend Engineer",
+    company: "Independent / Freelance",
+    period: "Present",
     description:
-      "Leading cloud infrastructure and CI/CD pipeline automation for enterprise clients.",
+      "APIs, SaaS-style products, security-conscious design, DevOps — Laravel, Django, React, Docker & cloud.",
   },
   {
-    role: "Full-Stack Developer & Architect",
-    company: "TechForge Labs",
-    period: "2019 – 2022",
+    role: "Systems & integration focus",
+    company: "Client projects",
+    period: "—",
     description:
-      "Designed and built scalable microservice architectures serving 10M+ users.",
-  },
-  {
-    role: "System Engineer",
-    company: "DataStream Corp",
-    period: "2017 – 2019",
-    description:
-      "Managed server infrastructure, optimized performance, and ensured 99.99% uptime.",
+      "Backend architecture, integrations, performance, and maintainable deployments.",
   },
 ];
 

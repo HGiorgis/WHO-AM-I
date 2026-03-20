@@ -5,16 +5,17 @@ import MarqueeBand from "../components/layout/MarqueeBand";
 import { fetchContactInfo, submitContact } from "@/api/portfolioApi";
 import { trackEvent } from "@/api/trackApi";
 
+/** Matches seeded `CONTACT_INFO_BODY` when API is unavailable */
 const contactInfoFallback = {
-  email: "hello@yourname.dev",
-  location: "San Francisco, CA",
+  email: "hailegiorgiswagaye@gmail.com",
+  location: "Addis Ababa, Ethiopia",
   status: "Available for new projects",
-  responseTime: "Within 24 hours",
+  responseTime: "Within 24–48 hours",
+  resumeUrl: "/HailegiorgisWagayeResume.pdf",
   socials: [
-    { label: "GitHub", href: "https://github.com" },
-    { label: "LinkedIn", href: "https://linkedin.com" },
-    { label: "Twitter", href: "https://twitter.com" },
-    { label: "Dribbble", href: "https://dribbble.com" },
+    { label: "GitHub", href: "https://github.com/hgiorgis" },
+    { label: "LinkedIn", href: "https://linkedin.com/in/hgiorgis23" },
+    { label: "Twitter", href: "https://twitter.com/hgiorgis" },
   ],
 };
 

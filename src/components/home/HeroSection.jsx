@@ -48,9 +48,9 @@ export default function HeroSection() {
           transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="mt-8 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed"
         >
-          Full-Stack Developer, System Engineer & DevOps Architect — crafting
-          scalable infrastructure and elegant code that powers modern
-          applications.
+          <span className="font-semibold text-foreground/90">HGIORGIS</span>
+          {" — "}Haile Giorgis Wagaye: full-stack, systems & DevOps — building
+          secure, scalable backends and products that ship.
         </motion.p>
 
         <motion.div
@@ -95,17 +95,17 @@ export default function HeroSection() {
               </p>
               <p className="mt-1">
                 <span className="text-green-400">$</span>{" "}
-                <span className="text-foreground">whoami</span>
+                <span className="text-foreground">echo &quot;HGIORGIS&quot;</span>
               </p>
               <p className="text-muted-foreground mt-1">
-                web-developer | system-engineer | devops-architect
+                Haile Giorgis Wagaye — full-stack · systems · DevOps
               </p>
               <p className="mt-2">
                 <span className="text-green-400">$</span>{" "}
                 <span className="text-foreground">cat skills.json</span>
               </p>
               <p className="text-primary mt-1">
-                {`{ "stack": ["React", "Node", "AWS", "Docker", "K8s"] }`}
+                {`{ "stack": ["Laravel", "Django", "Node", "React", "Docker"] }`}
               </p>
               <p className="mt-2 flex items-center">
                 <span className="text-green-400">$</span>{" "}

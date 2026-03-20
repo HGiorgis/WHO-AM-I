@@ -14,8 +14,8 @@ const NAV = [
 ];
 
 const fallbackContact = {
-  email: "hello@yourname.dev",
-  location: "San Francisco, CA",
+  email: "",
+  location: "Remote · worldwide",
   status: "Available for new projects",
   socials: [
     { label: "GitHub", href: "https://github.com" },
@@ -99,14 +99,14 @@ export default function FooterNew() {
         <div className="border-t border-paper/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <Link
             to="/Home"
-            aria-label="Whoami — home"
+            aria-label="HGIORGIS — home"
             className="flex items-center gap-3 font-syne font-bold text-2xl tracking-tight text-paper hover:text-[#f5c842] transition-colors"
           >
-            <SiteMark className="w-10 h-10 rounded-lg shrink-0" aria-hidden />
-            <span>WHOAMI</span>
+            <SiteMark className="w-10 h-10 rounded-lg shrink-0" title="HGIORGIS" aria-hidden />
+            <span>HGIORGIS</span>
           </Link>
-          <p className="font-mono text-xs text-paper/30">
-            © {new Date().getFullYear()} — All Rights Reserved
+          <p className="font-mono text-xs text-paper/30 text-center md:text-right">
+            © {new Date().getFullYear()} Haile Giorgis Wagaye — All rights reserved
           </p>
         </div>
       </div>

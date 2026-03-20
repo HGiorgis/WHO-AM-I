@@ -53,9 +53,20 @@ const stackFallback = [
 ];
 
 const expFallback = [
-  { role: "Backend & SaaS Architect", co: "Independent / Freelance", period: "2022 – Now", color: "#e84040", desc: "Designing and building production-ready platforms for startups — SaaS, verification systems, analytics tools." },
-  { role: "Full-Stack Developer", co: "TechForge Labs", period: "2020 – 2022", color: "#f5c842", desc: "Delivered complex web applications with Laravel, Django, and React across diverse industry verticals." },
-  { role: "System Engineer", co: "DataStream Corp", period: "2018 – 2020", color: "#4fa3e0", desc: "Managed server infrastructure, optimized backend performance, and ensured 99.9% uptime." },
+  {
+    role: "Full-Stack & Backend Engineer",
+    co: "Independent / Freelance",
+    period: "Present",
+    color: "#e84040",
+    desc: "End-to-end delivery: APIs, SaaS-style products, security-conscious design, and DevOps — Laravel, Django, React, Docker & cloud.",
+  },
+  {
+    role: "Systems & integration focus",
+    co: "Client projects",
+    period: "—",
+    color: "#f5c842",
+    desc: "Backend architecture, third-party integrations, performance, and maintainable deployments.",
+  },
 ];
 
 export default function About() {
@@ -130,24 +141,22 @@ export default function About() {
               Profile
             </p>
             <p className="text-lg leading-relaxed text-ink/80 mb-6">
-              Backend and SaaS Architect specializing in building{" "}
+              <span className="font-bold text-ink">HGIORGIS</span> — Haile Giorgis
+              Wagaye: engineer focused on{" "}
               <span className="font-bold text-ink">
                 secure, scalable systems
               </span>{" "}
-              with strong emphasis on clean architecture and long-term
-              maintainability.
+              and clear architecture you can grow with.
             </p>
             <p className="text-sm leading-relaxed text-ink/55 mb-6">
-              Experienced in designing and developing production-ready platforms
-              using{" "}
-              <strong className="text-ink">Laravel, Django, and Node.js</strong>
-              , with solid knowledge of DevOps practices including Docker,
-              CI/CD, and cloud deployment.
+              Production-ready backends and full-stack product work with{" "}
+              <strong className="text-ink">Laravel, Django, Node.js, and React</strong>
+              , plus Docker, CI/CD, and pragmatic cloud deployment.
             </p>
             <p className="text-sm leading-relaxed text-ink/55 mb-10">
-              Proven track record of delivering complex systems such as SaaS
-              platforms, verification systems, analytics tools, and
-              encryption-based applications. Works with startups and growing
+              From SaaS-style platforms and APIs to verification flows, analytics,
+              and cryptography-heavy features — collaborating with teams that need
+              reliability and maintainability. Works with startups and growing
               teams to turn complex requirements into reliable, well-structured
               systems that are built to scale.
             </p>

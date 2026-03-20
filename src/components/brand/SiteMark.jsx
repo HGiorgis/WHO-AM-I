@@ -5,7 +5,7 @@ import React, { useId } from "react";
  */
 export default function SiteMark({
   className = "w-9 h-9",
-  title = "H",
+  title = "HGIORGIS",
   "aria-hidden": ariaHidden,
   ...props
 }) {
