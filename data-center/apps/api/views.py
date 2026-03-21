@@ -909,17 +909,41 @@ def _format_site_pulse_plain():
 def telegram_webhook(request):
     """
     POST /api/telegram/webhook — Telegram updates (set TELEGRAM_WEBHOOK_PUBLIC_URL; Django syncs on start).
-    Commands: /more, /visitors, /help. Inline: mark this contact read, mark all read.
+    Owner-only: chat must authenticate with OWNER_KEY (/start then key, or plain key message).
+    Then: /more, /visitors, /help, /logout. Inline: mark read (same auth).
     """
     import json
     from django.core.cache import cache
+    from .owner_auth import validate_owner_key
     from .telegram_notify import (
         send_telegram_message,
         answer_telegram_callback_query,
         telegram_inbox_inline_keyboard,
         TELEGRAM_LAST_VISITOR_CACHE_KEY,
         TELEGRAM_LAST_CONTACT_ID_KEY,
+        telegram_chat_owner_authed,
+        telegram_chat_owner_grant,
+        telegram_chat_owner_revoke,
         _country_flag_emoji,
+    )
+
+    UNAUTH_WELCOME = (
+        "HGIORGIS portfolio bot — private.\n\n"
+        "This bot can show visitor analytics and inbox actions. "
+        "Only the site owner should use it.\n\n"
+        "Authenticate this chat with the same key as the owner dashboard / API:\n"
+        "• Send your owner key as a message, or\n"
+        "• Use: /start YOUR_OWNER_KEY\n\n"
+        "Then use /help for commands."
+    )
+
+    HELP_AUTHENTICATED = (
+        "PORTFOLIO BOT (authenticated)\n"
+        "=============================\n"
+        "/more — site pulse + visitor detail + inbox buttons\n"
+        "/visitors — last 5 visitors\n"
+        "/help — this help\n"
+        "/logout — lock this chat again\n"
     )
 
     try:
@@ -933,6 +957,13 @@ def telegram_webhook(request):
         cq_id = cb.get("id")
         chat = (cb.get("message") or {}).get("chat") or {}
         chat_id = chat.get("id")
+        if not telegram_chat_owner_authed(chat_id):
+            answer_telegram_callback_query(
+                cq_id,
+                text="Private bot: send /start and your owner key first.",
+                show_alert=True,
+            )
+            return JsonResponse({"ok": True})
         raw_data = str(cb.get("data") or "")[:64]
         answer_telegram_callback_query(cq_id, text="Done.")
         if chat_id and raw_data == "inbox_read_all":
@@ -986,9 +1017,63 @@ def telegram_webhook(request):
         return JsonResponse({"ok": True})
 
     tw = text.split()
-    first = tw[0].lower() if tw else ""
+    raw_first = tw[0] if tw else ""
+    first = raw_first.lower()
     if first.startswith("/") and "@" in first:
         first = first.split("@", 1)[0]
+
+    authed = telegram_chat_owner_authed(chat_id)
+
+    # --- /start [optional_owner_key] ---
+    if first == "/start":
+        key_arg = " ".join(tw[1:]).strip()
+        if key_arg and validate_owner_key(key_arg):
+            telegram_chat_owner_grant(chat_id)
+            send_telegram_message(
+                "✅ This chat is authenticated.\n\n" + HELP_AUTHENTICATED,
+                parse_mode=None,
+                chat_id=chat_id,
+            )
+            return JsonResponse({"ok": True})
+        if authed:
+            send_telegram_message(HELP_AUTHENTICATED, parse_mode=None, chat_id=chat_id)
+        else:
+            send_telegram_message(UNAUTH_WELCOME, parse_mode=None, chat_id=chat_id)
+        return JsonResponse({"ok": True})
+
+    # --- Plain message: owner key only (supports keys with spaces) ---
+    if not raw_first.startswith("/"):
+        if validate_owner_key(text.strip()):
+            telegram_chat_owner_grant(chat_id)
+            send_telegram_message(
+                "✅ Authenticated.\n\n" + HELP_AUTHENTICATED,
+                parse_mode=None,
+                chat_id=chat_id,
+            )
+        return JsonResponse({"ok": True})
+
+    # --- Commands below require authentication ---
+    if not authed:
+        if first == "/help":
+            send_telegram_message(UNAUTH_WELCOME, parse_mode=None, chat_id=chat_id)
+        else:
+            send_telegram_message(
+                "🔒 Not authenticated.\n\n"
+                "Send /start and then your owner key (same as portfolio OWNER_KEY), "
+                "or paste the key as a plain message.",
+                parse_mode=None,
+                chat_id=chat_id,
+            )
+        return JsonResponse({"ok": True})
+
+    if first == "/logout":
+        telegram_chat_owner_revoke(chat_id)
+        send_telegram_message(
+            "Logged out. This chat is locked again.\nSend your owner key to re-authenticate.",
+            parse_mode=None,
+            chat_id=chat_id,
+        )
+        return JsonResponse({"ok": True})
 
     tl = text.strip().lower()
     ask_more = first in ("/more", "/details") or tl in ("more", "details", "info")
@@ -1043,15 +1128,8 @@ def telegram_webhook(request):
             send_telegram_message("\n".join(parts), parse_mode=None, chat_id=chat_id)
         return JsonResponse({"ok": True})
 
-    if cmd in ("/help", "/start"):
-        help_text = (
-            "PORTFOLIO BOT\n"
-            "============\n"
-            "/more — site pulse + visitor detail + inbox buttons (mark read / mark all)\n"
-            "/visitors — last 5 visitors\n"
-            "/help     — this help\n"
-        )
-        send_telegram_message(help_text, parse_mode=None, chat_id=chat_id)
+    if cmd in ("/help",):
+        send_telegram_message(HELP_AUTHENTICATED, parse_mode=None, chat_id=chat_id)
         return JsonResponse({"ok": True})
 
     return JsonResponse({"ok": True})

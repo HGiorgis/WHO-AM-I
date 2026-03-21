@@ -14,6 +14,36 @@ TELEGRAM_LAST_VISITOR_CACHE_TTL = 86400  # 24 hours
 TELEGRAM_LAST_CONTACT_ID_KEY = "telegram_last_contact_message_id"
 TELEGRAM_LAST_CONTACT_ID_TTL = 86400
 
+# Chats that proved OWNER_KEY via Telegram (so /more etc. are not public)
+TELEGRAM_OWNER_CHAT_PREFIX = "telegram_owner_ok:"
+TELEGRAM_OWNER_CHAT_CACHE_TTL = 86400 * 365  # 1 year
+
+
+def telegram_chat_owner_authed(chat_id) -> bool:
+    """True if this Telegram chat (DM or group) sent a valid owner key."""
+    if chat_id is None:
+        return False
+    try:
+        return bool(cache.get(f"{TELEGRAM_OWNER_CHAT_PREFIX}{int(chat_id)}"))
+    except (TypeError, ValueError):
+        return False
+
+
+def telegram_chat_owner_grant(chat_id) -> None:
+    if chat_id is None:
+        return
+    cache.set(
+        f"{TELEGRAM_OWNER_CHAT_PREFIX}{int(chat_id)}",
+        1,
+        TELEGRAM_OWNER_CHAT_CACHE_TTL,
+    )
+
+
+def telegram_chat_owner_revoke(chat_id) -> None:
+    if chat_id is None:
+        return
+    cache.delete(f"{TELEGRAM_OWNER_CHAT_PREFIX}{int(chat_id)}")
+
 
 def telegram_inbox_inline_keyboard():
     """Under /more: mark latest notified contact (cache) + mark all."""

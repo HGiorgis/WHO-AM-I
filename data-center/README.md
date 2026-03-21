@@ -21,6 +21,8 @@ pip install django djangorestframework django-cors-headers
   set OWNER_KEY=your-secret-key
   ```
 
+- **Telegram bot** (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_PUBLIC_URL`, optional `TELEGRAM_CHAT_ID`): visitor/contact notifications go to Telegram. **Commands (`/more`, `/visitors`, inline “mark read” buttons) only work after that chat authenticates** with the same **`OWNER_KEY`**: send `/start`, then paste the key as a plain message, or use `/start YOUR_KEY`. Use **`/logout`** to lock the chat again. Auth is stored in Django’s cache (default: in-memory; lost on restart unless you use Redis, etc.).
+
 ## Run
 
 ```bash

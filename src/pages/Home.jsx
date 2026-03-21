@@ -257,7 +257,7 @@ function Hero() {
               Identity mark
             </p>
             <p className="font-mono text-xs text-ink/50 uppercase tracking-[0.35em]">
-              Portfolio — 2024
+              Portfolio — 2026
             </p>
           </div>
         </motion.div>
@@ -369,14 +369,14 @@ const worksFallback = [
   {
     title: "KYC Verification Service",
     cat: "Security · Django",
-    year: "2024",
+    year: "2026",
     icon: ShieldCheck,
     color: "#e84040",
   },
   {
     title: "LinkFlow — Redirect & Pixel Tracking",
     cat: "Node.js · Tracking",
-    year: "2024",
+    year: "2025",
     icon: Link2,
     color: "#f5c842",
   },

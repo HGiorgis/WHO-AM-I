@@ -154,8 +154,8 @@ def print_webhook_help() -> None:
         "   PowerShell:\n"
         '     $env:TELEGRAM_WEBHOOK_PUBLIC_URL="https://hgiorgis.onrender.com/api/telegram/webhook"\n'
         "     python tests/bot_test.py\n\n"
-        "4) getWebhookInfo should then show that url. Try in the group:\n"
-        "     /more@YourBot   /help@YourBot\n\n"
+        "4) getWebhookInfo should then show that url. In Telegram:\n"
+        "     /start then send OWNER_KEY (or /start YOUR_KEY), then /more@YourBot\n\n"
         "Or set TELEGRAM_WEBHOOK_PUBLIC_URL on Render — Django calls setWebhook on startup.\n",
         file=sys.stderr,
     )
@@ -217,11 +217,17 @@ def main() -> int:
         return 0
 
     if not SKIP_WEBHOOK:
-        print("\n== 3) POST synthetic /more to Django (local test only) ==")
+        owner_key = (os.environ.get("OWNER_KEY") or "").strip()
+        print("\n== 3) POST synthetic auth + /more to Django (local test only) ==")
         print(f"    URL: {WEBHOOK_URL}")
+        if owner_key:
+            code0, body0 = post_json(WEBHOOK_URL, fake_update(owner_key, chat_id))
+            print(f"    auth key  HTTP {code0}  body[:120]: {body0[:120]}")
+        else:
+            print("    (skip auth: set OWNER_KEY to test /more locally)", file=sys.stderr)
         pl = fake_update("/more", chat_id)
         code, body = post_json(WEBHOOK_URL, pl)
-        print(f"    HTTP {code}  body[:200]: {body[:200]}")
+        print(f"    /more     HTTP {code}  body[:200]: {body[:200]}")
 
     if SEND_TEST_MESSAGE:
         print("\n== 5) sendMessage ping ==")
@@ -233,7 +239,7 @@ def main() -> int:
                     "text": (
                         "bot_test.py OK.\n"
                         "Production: set TELEGRAM_WEBHOOK_PUBLIC_URL on server (Django syncs webhook on start).\n"
-                        "Try: /more  /help"
+                        "Try: /start + OWNER_KEY, then /more /help"
                     ),
                 },
             )
